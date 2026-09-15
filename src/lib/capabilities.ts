@@ -54,6 +54,10 @@ export const CAPABILITIES = [
   // is a mark a model gave, and the student could not tell.
   'mark-assignment',
   'submit-assignment',
+  // A CERTIFICATE IS ISSUED BY A PERSON, like a mark. The criteria are checked
+  // mechanically and then somebody decides — a platform that issued them on a
+  // threshold would be certifying attendance at a website.
+  'issue-certificate',
 
   // ---- Teaching around the material --------------------------------------
   'view-own-courses',
@@ -115,7 +119,7 @@ export const LECTURER_CAPABILITIES: Capability[] = [
   // Their own voice, and nobody else's decision.
   'authorise-own-voice',
   // What they set around the lecture, and the marking of it.
-  'set-reading', 'set-assignment', 'mark-assignment',
+  'set-reading', 'set-assignment', 'mark-assignment', 'issue-certificate',
 ];
 
 const MATRIX: Record<Role, Capability[]> = {
@@ -130,6 +134,8 @@ const MATRIX: Record<Role, Capability[]> = {
     // A student's working language is changed here, with a reason recorded —
     // not by the student, mid-term, on a whim.
     'set-working-language',
+    // The registry issues credentials too, for courses it administers.
+    'issue-certificate',
   ],
 
   // A department's courses — the same environment powers, narrower, and

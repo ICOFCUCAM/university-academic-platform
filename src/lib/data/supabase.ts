@@ -27,6 +27,7 @@ import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
+import type { Certificate } from '../credential/certificate';
 import type { Store } from './store';
 
 type Row = Record<string, unknown>;
@@ -292,6 +293,23 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         .update({ read_at: new Date().toISOString() })
         .eq('person_id', personId).is('read_at', null);
       if (error) throw new Error(error.message);
+    },
+
+    async certificates(courseId, personId) {
+      return (await rows('ls_certificates', (q) => {
+        let query = q;
+        if (courseId) query = query.eq('course_id', courseId);
+        if (personId) query = query.eq('student_id', personId);
+        return query;
+      })) as unknown as Certificate[];
+    },
+    async certificateByCode(code) {
+      const found = await rows('ls_certificates', (q) => q.eq('code', code.toUpperCase()));
+      return (found[0] as unknown as Certificate) ?? null;
+    },
+    async saveCertificate(certificate) {
+      await upsert('ls_certificates', certificate as unknown as Row);
+      return certificate;
     },
 
     async readings(courseId) {

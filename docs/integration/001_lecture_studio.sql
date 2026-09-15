@@ -240,6 +240,24 @@ create table if not exists ls_submissions (
   unique (assignment_id, student_id)
 );
 
+create table if not exists ls_certificates (
+  id            uuid primary key default gen_random_uuid(),
+  course_id     uuid not null references courses (id) on delete cascade,
+  course_code   text not null,
+  course_title  text not null,
+  student_id    uuid not null references auth.users (id),
+  student_name  text not null,
+  -- WHAT IT ATTESTS, in sentences a reader can weigh, rather than the word
+  -- "completed" and a signature.
+  attests       jsonb not null default '[]'::jsonb,
+  issued_at     timestamptz not null default now(),
+  issued_by     uuid not null references auth.users (id),
+  issued_by_name text not null,
+  code          text not null unique,
+  revoked_at    timestamptz,
+  revoked_reason text
+);
+
 create table if not exists ls_jobs (
   id            uuid primary key default gen_random_uuid(),
   lecture_id    uuid not null references ls_lectures (id) on delete cascade,
@@ -314,6 +332,7 @@ alter table ls_progress            enable row level security;
 alter table ls_readings            enable row level security;
 alter table ls_assignments         enable row level security;
 alter table ls_submissions         enable row level security;
+alter table ls_certificates        enable row level security;
 alter table ls_jobs                enable row level security;
 alter table ls_run_costs           enable row level security;
 alter table ls_usage               enable row level security;
@@ -398,6 +417,26 @@ create policy ls_submissions_update on ls_submissions for update
     (student_id = auth.uid() and marked_at is null)
     or ls_teaches_course(course_id)
   );
+
+-- A CERTIFICATE IS CHECKABLE BY SOMEBODY WITH NO ACCOUNT, which is the whole
+-- point of one: verification reads a single row by its code through a function
+-- that returns what the certificate attests and nothing else about the person.
+create policy ls_certificates_read on ls_certificates for select
+  using (student_id = auth.uid() or ls_teaches_course(course_id));
+create policy ls_certificates_issue on ls_certificates for insert
+  with check (ls_teaches_course(course_id));
+
+create or replace function ls_verify_certificate(certificate_code text)
+returns table (course_code text, course_title text, student_name text,
+               attests jsonb, issued_at timestamptz, issued_by_name text, revoked boolean)
+language sql stable security definer set search_path = public as $$
+  select c.course_code, c.course_title, c.student_name, c.attests,
+         c.issued_at, c.issued_by_name, c.revoked_at is not null
+    from ls_certificates c
+   where c.code = upper(certificate_code);
+$$;
+
+grant execute on function ls_verify_certificate(text) to anon, authenticated;
 
 create policy ls_jobs_read on ls_jobs for select using (ls_teaches_course(course_id));
 create policy ls_costs_read on ls_run_costs for select using (ls_teaches_course(course_id));

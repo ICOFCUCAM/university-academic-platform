@@ -37,6 +37,9 @@ const MAY = [
   // A MARK IS A PERSON'S ACT. There is no capability a machine can hold and
   // no screen that suggests a number.
   ['mark an assignment themselves', 'mark-assignment'],
+  // ISSUED BY A PERSON, like a mark. A platform that issued certificates on a
+  // threshold would be certifying attendance at a website.
+  ['issue a certificate for their course', 'issue-certificate'],
 ];
 const MAY_NOT = [
   // A lecturer who does not read Arabic cannot approve the Arabic, and a
@@ -89,6 +92,7 @@ t.check('may not approve', C.can('assistant', 'approve-artefact'), false);
 t.check('may not publish', C.can('assistant', 'publish-to-students'), false);
 t.check('may not set work', C.can('assistant', 'set-assignment'), false);
 t.check('may not mark it', C.can('assistant', 'mark-assignment'), false);
+t.check('may not issue a certificate', C.can('assistant', 'issue-certificate'), false);
 
 t.section('A translation reviewer vouches for one language, and authors nothing');
 t.check('may approve a translation', C.can('translation-reviewer', 'approve-translation'), true);
@@ -104,6 +108,7 @@ t.check('may ask the Course AI', C.can('student', 'ask-course-ai'), true);
 t.check('may hand work in', C.can('student', 'submit-assignment'), true);
 t.check('may not upload a lecture to a course', C.can('student', 'upload-source-material'), false);
 t.check('may not mark anything', C.can('student', 'mark-assignment'), false);
+t.check('may not certify themselves', C.can('student', 'issue-certificate'), false);
 // THE WORKING LANGUAGE IS NOT A SWITCH IN THE CORNER OF A COURSE. A student
 // hopping between languages mid-term revises from four half-remembered
 // versions of one lecture.

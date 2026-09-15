@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Upload } from 'lucide-react';
+import { RecordLecture } from '@/components/RecordLecture';
 
 /**
  * The upload. MP3, M4A, WAV, AAC, OGG, WebM, MP4 and MOV are what a lecture
@@ -87,6 +88,8 @@ export function NewLectureForm({ courseId, nextSequence }: { courseId: string; n
             className="mt-1 w-28 rounded-md border border-page-line px-3 py-2 text-sm"
           />
         </div>
+        <RecordLecture onRecorded={(recorded) => setFile(recorded)} />
+
         <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-page-line px-3 py-2 text-sm text-ink-soft hover:border-brand/40">
           <Upload size={15} />
           {file ? file.name : 'Choose a recording — MP3, M4A, WAV, AAC, OGG, WebM, MP4, MOV'}

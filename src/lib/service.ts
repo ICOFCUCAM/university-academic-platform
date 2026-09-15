@@ -39,6 +39,9 @@ import { mayProcess, PLAN_BY_ID } from './billing/plans';
 import { minutesUsedIn, period } from './billing/usage';
 import { WORDING, type NotificationKind } from './notify/notifications';
 import { createLimiter, type Limiter } from './limits';
+import {
+  assess, attestation, verificationCode, type Certificate, type Evidence,
+} from './credential/certificate';
 import { mark, parseQuiz } from './study/quiz';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
@@ -1740,4 +1743,119 @@ export async function searchCourse(
 
   const courses = await reachableCourses(store, actor, where.course, options.widenTo);
   return retrieve(await passagesAcross(store, courses), query, 12);
+}
+
+/** ---- Certificates, which say something true or say nothing -------------- */
+
+export async function evidenceFor(
+  store: Store, courseId: string, studentId: string,
+): Promise<Evidence> {
+  const [artefacts, progress, assignments] = await Promise.all([
+    store.artefactsForCourse(courseId),
+    store.progress(courseId, studentId),
+    store.assignments(courseId),
+  ]);
+
+  const publishedLectures = new Set(
+    artefacts.filter((a) => a.state === 'published' && !a.translatedFromId).map((a) => a.lectureId),
+  );
+  const read = new Set(progress.filter((p) => p.event === 'read').map((p) => p.lectureId));
+  const sat = progress.filter((p) => p.event === 'quiz-taken');
+  const scored = sat.filter((p) => (p.outOf ?? 0) > 0);
+
+  let marked = 0;
+  for (const assignment of assignments) {
+    const mine = await store.submissions(assignment.id, studentId);
+    if (mine.some((submission) => submission.returnedAt)) marked += 1;
+  }
+
+  return {
+    lecturesPublished: publishedLectures.size,
+    lecturesRead: [...read].filter((id) => publishedLectures.has(id)).length,
+    quizzesTaken: sat.length,
+    quizAverage: scored.length
+      ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0) / (p.outOf ?? 1), 0) / scored.length * 100)
+      : undefined,
+    assignmentsMarked: marked,
+  };
+}
+
+/** Whether this student has done what the course asks — shown in full. */
+export async function completionOf(
+  store: Store, actor: Actor, courseId: string, studentId: string,
+) {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  if (!teaching && actor.id !== studentId && !can(actor.role, 'issue-certificate')) {
+    throw new Refused('That is between the student and the people who teach the course.');
+  }
+  const evidence = await evidenceFor(store, courseId, studentId);
+  return { evidence, assessment: assess(where.course.completion ?? {}, evidence) };
+}
+
+/**
+ * ISSUED BY A PERSON. The criteria are checked mechanically and then somebody
+ * with the capability decides — a platform that issued a certificate the
+ * moment a threshold was crossed would be certifying attendance at a website.
+ */
+export async function issueCertificate(
+  store: Store, actor: Actor, courseId: string, studentId: string,
+): Promise<Certificate> {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  if (!can(actor.role, 'issue-certificate') || (!teaching && actor.role !== 'registry')) {
+    throw new Refused('A certificate is issued by the people who teach the course.');
+  }
+
+  const evidence = await evidenceFor(store, courseId, studentId);
+  const assessment = assess(where.course.completion ?? {}, evidence);
+  if (!assessment.met) {
+    const failing = assessment.lines.filter((line) => !line.met)
+      .map((line) => `${line.requirement} — ${line.actual}`);
+    throw new Refused(`Not yet: ${failing.join('; ')}.`);
+  }
+
+  const [student, issuer] = await Promise.all([store.person(studentId), store.person(actor.id)]);
+  if (!student) throw new Refused('No such student.');
+
+  const issuedAt = now();
+  const certificate: Certificate = {
+    id: randomUUID(),
+    courseId,
+    courseCode: where.course.code,
+    courseTitle: where.course.title,
+    studentId,
+    // AS THE UNIVERSITY RECORDS IT. Never a name this platform invented or
+    // tidied: a credential with the wrong name on it is not a credential.
+    studentName: student.name,
+    attests: attestation(evidence, assessment),
+    issuedAt,
+    issuedBy: actor.id,
+    issuedByName: issuer?.name ?? actor.id,
+    code: verificationCode(courseId, studentId, issuedAt),
+  };
+
+  await store.saveCertificate(certificate);
+  await tell(store, studentId, 'work-returned', `${where.course.code} — your certificate`, '/profile');
+  return certificate;
+}
+
+/**
+ * What somebody with no account sees when they type the code in. The facts on
+ * the certificate and nothing else about the person — not their email, not
+ * their other courses, not whether they are still enrolled.
+ */
+export async function verifyCertificate(store: Store, code: string) {
+  const certificate = await store.certificateByCode(code.trim());
+  if (!certificate) return null;
+  return {
+    courseCode: certificate.courseCode,
+    courseTitle: certificate.courseTitle,
+    studentName: certificate.studentName,
+    attests: certificate.attests,
+    issuedAt: certificate.issuedAt,
+    issuedByName: certificate.issuedByName,
+    revoked: !!certificate.revokedAt,
+    revokedReason: certificate.revokedReason,
+  };
 }

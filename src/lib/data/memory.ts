@@ -17,6 +17,7 @@ import type {
 import type { ProgressRecord } from '../study/progress';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
+import type { Certificate } from '../credential/certificate';
 import type { LectureExtract } from '../knowledge/types';
 import type { Store } from './store';
 
@@ -37,6 +38,7 @@ export interface Snapshot {
   costs: RunCost[];
   usage: UsageRecord[];
   notifications: Notification[];
+  certificates: Certificate[];
   readings: Reading[];
   assignments: Assignment[];
   submissions: Submission[];
@@ -195,6 +197,20 @@ export function createMemoryStore(initial: Snapshot): Store {
         if (n.personId === personId && !n.readAt) n.readAt = new Date().toISOString();
       }
       save();
+    },
+
+    async certificates(courseId, personId) {
+      return clone(db.certificates.filter((c) => (!courseId || c.courseId === courseId)
+        && (!personId || c.studentId === personId)));
+    },
+    async certificateByCode(code) {
+      return clone(db.certificates.find((c) => c.code === code.toUpperCase()) ?? null);
+    },
+    async saveCertificate(certificate) {
+      const at = db.certificates.findIndex((c) => c.id === certificate.id);
+      if (at >= 0) db.certificates[at] = certificate; else db.certificates.push(certificate);
+      save();
+      return clone(certificate);
     },
 
     async readings(courseId) { return clone(db.readings.filter((r) => r.courseId === courseId)); },

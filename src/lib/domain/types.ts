@@ -137,6 +137,12 @@ export interface Course {
    */
   defaultVoice?: string;
   allowedVoices?: string[];
+  /**
+   * What completing this course means, if the lecturer has said. Absent means
+   * no certificate can be issued: a course that has not said what completion
+   * is does not certify anything, and the platform will not decide it.
+   */
+  completion?: import('../credential/certificate').CompletionRule;
   /** The university opens and closes the course; a lecturer never does. */
   status: 'draft' | 'running' | 'archived';
 }

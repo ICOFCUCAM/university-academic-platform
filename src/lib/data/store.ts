@@ -25,6 +25,7 @@ import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
+import type { Certificate } from '../credential/certificate';
 
 export interface Store {
   /** Which implementation this is, shown in Settings. */
@@ -88,6 +89,10 @@ export interface Store {
   notifications(personId: string): Promise<Notification[]>;
   notify(notification: Notification): Promise<void>;
   markNotificationsRead(personId: string): Promise<void>;
+
+  certificates(courseId?: string, personId?: string): Promise<Certificate[]>;
+  certificateByCode(code: string): Promise<Certificate | null>;
+  saveCertificate(certificate: Certificate): Promise<Certificate>;
 
   readings(courseId: string): Promise<Reading[]>;
   saveReading(reading: Reading): Promise<Reading>;

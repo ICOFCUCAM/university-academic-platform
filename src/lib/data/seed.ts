@@ -212,6 +212,8 @@ export const DEMO: Snapshot = {
     terminology: ['thylakoid', 'granum', 'stroma', 'rubisco', 'Calvin cycle'],
     originalLanguage: 'en',
     offeredLanguages: ['fr', 'es', 'ar'],
+    // What completing this course means, as this lecturer defines it.
+    completion: { lecturesRead: 0.8, quizzesTaken: 3, quizAverage: 60 },
     status: 'running',
   }],
   people: [
@@ -262,6 +264,7 @@ export const DEMO: Snapshot = {
   costs: [],
   usage: [],
   notifications: [],
+  certificates: [],
   readings: [],
   assignments: [],
   submissions: [],

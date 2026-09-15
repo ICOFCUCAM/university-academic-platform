@@ -26,7 +26,7 @@ Three kinds of entry:
 | **Voice synthesis / lecturer voice** | Stubbed — consent record, catalogue, UI | The consent layer is real and enforced. No cloning vendor is wired; the voice id is passed to the speech service and what it does with it is its business. |
 | **Audio player** | **Built.** Parts, speed from the student's profile, download, and "listened" recorded when playback starts rather than when the page loads. |
 | **File storage** | **Built, on disk.** `ACADEMIC_MEDIA_DIR`; keys minted by the platform so a filename cannot reach the path; served through a route that asks `mayAct` rather than relying on an unguessable URL. No object store (S3/Supabase) — one file against the same interface. |
-| **Live microphone recording** | **Not built.** Named in the specification; the upload accepts a file, not a stream. |
+| **Live microphone recording** | **Built, in the browser.** `RecordLecture` uses `MediaRecorder` with the browser's own container, keeps the take in the page while it runs, and hands the result to the upload path as an ordinary file — so a recording and an uploaded file land in the same store by the same route. The tab must stay open; the page says so. No resumable upload, no recovery of a take lost to a closed tab. |
 | **Authentication** | **Built for a mounted deployment.** Three modes: the demonstration switcher (default), a signed host header (`ACADEMIC_SESSION_MODE=header` + shared secret, HMAC, five-minute window), and a verified Supabase access token (signature and expiry, not merely decoded). No fallback outside `demo`. No login screen of its own, no password reset, no SSO client — the host owns those. |
 | **Database** | **Adapter written, never run.** `data/supabase.ts` against the tables in `docs/integration/001_lecture_studio.sql`, with `data/conformance.mjs` as the suite it must pass — `npm run conformance:supabase` against a real project. Until that passes it is a draft, and the in-memory store is what runs. |
 | **Job queue** | Stubbed — in-process, single worker, three retries | Survives neither a restart nor a second instance. No broker, no dead-letter handling, no back-pressure. |
@@ -41,7 +41,7 @@ Three kinds of entry:
 | **Progress tracking** | **Built.** Read, listened, revised and quiz-taken, deduplicated per day, with a student's own record and a cohort shape that reduces `personId` to a set size so a lecturer cannot learn who. |
 | **"Today's Learning" panel** | **Built** — the per-lecture `📖 Read · 🎧 Listen · 🧠 Revision · ❓ Quiz · 🤖 Ask` strip, with ticks against what is done. |
 | **Spaced repetition** | **Not built.** Flashcard confidence is per session. |
-| **Certificates** | **Not built.** Named in the business list. No completion model, no issuance, no verification. |
+| **Certificates** | **Built.** `credential/certificate.ts` reads the course's completion rule against what the student actually did — no rule certifies nothing, deliberately — and `issue-certificate` belongs to the lecturer and the registry, never a student or an assistant. Verification is a public page that asks nothing about whoever is looking and returns only the attestation. No printed artefact, no signing key, no external registry. |
 
 ## 3. Lecturer features named in the specification and absent
 
