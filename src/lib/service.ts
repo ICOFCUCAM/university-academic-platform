@@ -35,6 +35,10 @@ import { validateTranslation } from './i18n/validate';
 import { LANGUAGE_BY_CODE, languageName, TRANSLATABLE as TRANSLATABLE_KINDS } from './i18n/languages';
 import { applyDecisions, findUnusual, type WordDecision } from './ai/unusual';
 import { cohortShape, myProgress, neglected, type LearningEvent } from './study/progress';
+import { mayProcess, PLAN_BY_ID } from './billing/plans';
+import { minutesUsedIn, period } from './billing/usage';
+import { WORDING, type NotificationKind } from './notify/notifications';
+import { createLimiter, type Limiter } from './limits';
 import { mark, parseQuiz } from './study/quiz';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
@@ -45,6 +49,13 @@ export class Refused extends Error {
 }
 
 const now = () => new Date().toISOString();
+
+/**
+ * One account cannot spend a department's budget in an evening. Replaceable:
+ * a deployment with two instances passes its own limiter in.
+ */
+let limiter: Limiter = createLimiter();
+export function useLimiter(replacement: Limiter) { limiter = replacement; }
 
 async function scene(store: Store, courseId: string, actorId: string, lecture?: Lecture | null) {
   const course = await store.course(courseId);
@@ -149,6 +160,23 @@ export async function runStage(
   await store.saveArtefact(artefact);
 
   try {
+    // Every run is costed, whatever it was: what a lecture costs to process is
+    // the first question a university asks before it buys.
+    const charge = async (stage: string, producedBy: string, inText: string, outText: string, usage?: { inputTokens?: number; outputTokens?: number }) => {
+      await store.recordCost({
+        id: randomUUID(),
+        courseId: artefact.courseId,
+        lectureId: artefact.lectureId,
+        stage,
+        producedBy,
+        inputTokens: usage?.inputTokens,
+        outputTokens: usage?.outputTokens,
+        charactersIn: inText.length,
+        charactersOut: outText.length,
+        at: now(),
+      });
+    };
+
     if (kind === 'audio_15min') {
       // One recording per part of the script, so a ninety-minute lecture
       // arrives as two lessons rather than one compressed one.
@@ -201,6 +229,7 @@ export async function runStage(
 
       const restored = restoreTerms(result.text, guarded.markers);
       artefact.producedBy = result.producedBy;
+      await charge(kind, result.producedBy, guarded.text, result.text, result.usage);
 
       // ---- TERM VALIDATION ---------------------------------------------
       //
@@ -271,6 +300,15 @@ export async function runStage(
     artefact.error = error instanceof Error ? error.message : String(error);
     artefact.updatedAt = now();
   }
+
+  // The person who asked is told, because ten minutes later they are somewhere
+  // else. Told once, about their own lecture, and never about a student.
+  const stageLabel = `${STAGE_BY_KIND[kind].label} for Lecture ${String(lecture.sequence).padStart(2, '0')}`;
+  await tell(
+    store, artefact.ownerId,
+    artefact.state === 'failed' ? 'processing-failed' : 'processing-finished',
+    stageLabel, `/lectures/${lecture.id}`,
+  );
 
   return store.saveArtefact(artefact);
 }
@@ -473,6 +511,9 @@ export async function askCourseAI(
     throw new Refused('The Course AI answers for the people on the course.');
   }
 
+  const allowed = limiter.take(actor.id, 'ask');
+  if (!allowed.allowed) throw new Refused(allowed.reason!);
+
   const [passages, knowledge] = await Promise.all([
     coursePassages(store, courseId), knowledgeBase(store, courseId),
   ]);
@@ -542,6 +583,9 @@ export async function makeStudyAid(
   }
 
   const courseLanguage = where.course.originalLanguage ?? 'en';
+  const permitted = limiter.take(actor.id, 'make');
+  if (!permitted.allowed) throw new Refused(permitted.reason!);
+
   const lectures = await store.lectures(courseId);
   const chosen = brief.lectures
     ? lectures.filter((l) => brief.lectures!.includes(l.sequence))
@@ -712,6 +756,26 @@ export async function addLecture(
   const where = await scene(store, courseId, actor.id);
   const personal = input.personal === true;
 
+  // ---- THE REFUSAL COMES BEFORE THE SPEND -------------------------------
+  //
+  // Transcription and speech cost real money per minute. A person uploading
+  // ninety minutes with forty left in the month is told now, while they can
+  // still do something about it — not after the transcript is half made.
+  if (input.minutes) {
+    const person = await store.person(actor.id);
+    const plan = PLAN_BY_ID[person?.plan ?? 'institution'];
+    const used = minutesUsedIn(await store.usage(actor.id), actor.id);
+    const allowance = mayProcess(plan, { minutesUsed: used, periodStart: period() }, input.minutes);
+    if (!allowance.allowed) {
+      await store.notify({
+        id: randomUUID(), personId: actor.id, kind: 'allowance-spent',
+        ...WORDING['allowance-spent'](allowance.reason ?? ''),
+        at: now(),
+      });
+      throw new Refused(allowance.reason!);
+    }
+  }
+
   // A LECTURE ON A COURSE IS ADDED BY SOMEBODY WHO TEACHES IT. A lecture in a
   // personal library is added by whoever is building that library, which is
   // usually a student with a recording of a lecture they attended.
@@ -732,7 +796,15 @@ export async function addLecture(
     createdAt: now(),
     sourceMinutes: input.minutes,
   };
-  return store.saveLecture(lecture);
+  await store.saveLecture(lecture);
+
+  if (input.minutes) {
+    await store.recordUsage({
+      id: randomUUID(), personId: actor.id, period: period(),
+      minutes: input.minutes, lectureId: lecture.id, at: now(),
+    });
+  }
+  return lecture;
 }
 
 /**
@@ -1000,6 +1072,9 @@ export async function translateArtefact(
     artefact.translationStanding = 'unreviewed';
     artefact.version += 1;
     artefact.updatedAt = now();
+    await tell(store, artefact.ownerId, 'translation-ready',
+      `${languageName(targetLanguage)} — ${original.kind.replace(/_/g, ' ')}`,
+      `/lectures/${artefact.lectureId}`);
     await store.addVersion({
       id: randomUUID(),
       artefactId: artefact.id,
@@ -1358,7 +1433,7 @@ export async function setAssignment(
   if (!input.title.trim() || !input.brief.trim()) throw new Refused('An assignment needs a title and a brief.');
 
   const existing = input.id ? await store.assignment(input.id) : null;
-  return store.saveAssignment({
+  const saved = await store.saveAssignment({
     id: existing?.id ?? randomUUID(),
     courseId,
     lectureId: input.lectureId,
@@ -1370,6 +1445,15 @@ export async function setAssignment(
     createdAt: existing?.createdAt ?? now(),
     published: input.published ?? existing?.published ?? false,
   });
+
+  // Told once, when it is set — not again each time the brief is edited.
+  if (saved.published && !existing?.published) {
+    for (const enrolment of await store.enrolments(courseId)) {
+      if (enrolment.status !== 'registered') continue;
+      await tell(store, enrolment.studentId, 'work-set', saved.title, `/courses/${courseId}/work`);
+    }
+  }
+  return saved;
 }
 
 export async function submitWork(
@@ -1453,6 +1537,8 @@ export async function returnWork(
   for (const submission of submissions) {
     if (!submission.markedAt || submission.returnedAt) continue;
     await store.saveSubmission({ ...submission, returnedAt: now() });
+    await tell(store, submission.studentId, 'work-returned', assignment.title,
+      `/courses/${assignment.courseId}/work`);
     released += 1;
   }
   return released;
@@ -1476,4 +1562,32 @@ export async function workFor(
     ...submission, mark: undefined, feedback: undefined,
     markedBy: undefined, markedByName: undefined, markedAt: undefined,
   });
+}
+
+/** ---- Telling somebody ---------------------------------------------------- */
+
+export async function tell(
+  store: Store, personId: string, kind: NotificationKind, subject: string, link?: string,
+): Promise<void> {
+  await store.notify({
+    id: randomUUID(), personId, kind, ...WORDING[kind](subject), link, at: now(),
+  });
+}
+
+export async function myNotifications(store: Store, actor: Actor) {
+  return store.notifications(actor.id);
+}
+
+export async function readNotifications(store: Store, actor: Actor) {
+  await store.markNotificationsRead(actor.id);
+}
+
+/** What the runs on a course have cost, for whoever pays for it. */
+export async function costsOn(store: Store, actor: Actor, courseId: string) {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  if (!teaching && !can(actor.role, 'manage-courses')) {
+    throw new Refused('What a course costs to run is for the people who run it.');
+  }
+  return store.costs(courseId);
 }

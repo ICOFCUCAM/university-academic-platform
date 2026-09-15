@@ -15,6 +15,8 @@ import type {
   TutorMessage, University,
 } from '../domain/types';
 import type { ProgressRecord } from '../study/progress';
+import type { RunCost, UsageRecord } from '../billing/usage';
+import type { Notification } from '../notify/notifications';
 import type { LectureExtract } from '../knowledge/types';
 import type { Store } from './store';
 
@@ -32,6 +34,9 @@ export interface Snapshot {
   studyAids: StudyAid[];
   progress: ProgressRecord[];
   attempts: QuizAttempt[];
+  costs: RunCost[];
+  usage: UsageRecord[];
+  notifications: Notification[];
   readings: Reading[];
   assignments: Assignment[];
   submissions: Submission[];
@@ -169,6 +174,23 @@ export function createMemoryStore(initial: Snapshot): Store {
       db.attempts.push(attempt);
       save();
       return clone(attempt);
+    },
+
+    async costs(courseId) { return clone(db.costs.filter((c) => c.courseId === courseId)); },
+    async recordCost(cost) { db.costs.push(cost); save(); },
+    async usage(personId) { return clone(db.usage.filter((u) => u.personId === personId)); },
+    async recordUsage(record) { db.usage.push(record); save(); },
+
+    async notifications(personId) {
+      return clone(db.notifications.filter((n) => n.personId === personId)
+        .sort((a, b) => b.at.localeCompare(a.at)));
+    },
+    async notify(notification) { db.notifications.push(notification); save(); },
+    async markNotificationsRead(personId) {
+      for (const n of db.notifications) {
+        if (n.personId === personId && !n.readAt) n.readAt = new Date().toISOString();
+      }
+      save();
     },
 
     async readings(courseId) { return clone(db.readings.filter((r) => r.courseId === courseId)); },

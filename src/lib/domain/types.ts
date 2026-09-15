@@ -174,6 +174,13 @@ export interface Person {
   voiceConsent?: import('../voice/voices').VoiceConsent;
 
   /**
+   * What this account may process in a month. Absent means the institution's
+   * licence, which is not metered by the minute — metering a lecturer's own
+   * teaching would be absurd.
+   */
+  plan?: import('../billing/plans').PlanId;
+
+  /**
    * Every change of working language, with who made it and why. A student who
    * finds their course in a different language next Monday is owed an answer
    * to "who did that, and when".

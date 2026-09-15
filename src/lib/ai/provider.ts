@@ -33,6 +33,15 @@ export interface CompletionResult {
   text: string;
   /** What actually produced it, recorded on the artefact. Never guessed. */
   producedBy: string;
+  /**
+   * WHAT IT COST, as the vendor reported it — not as we estimated it. A
+   * university asked to buy this will ask what a lecture costs to process, and
+   * the only honest answer comes from the meter the vendor billed.
+   *
+   * Absent where the engine cannot report it (the offline processor, a
+   * transcription service that does not say).
+   */
+  usage?: { inputTokens?: number; outputTokens?: number; seconds?: number };
 }
 
 export interface LanguageModel {

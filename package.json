@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:quiz && npm run test:flashcards && npm run test:progress && npm run test:coursework && npm run test:service",
+    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:quiz && npm run test:flashcards && npm run test:progress && npm run test:usage && npm run test:limits && npm run test:coursework && npm run test:service",
     "test:capabilities": "node src/lib/capabilities.test.mjs",
     "test:ownership": "node src/lib/domain/ownership.test.mjs",
     "test:pipeline": "node src/lib/pipeline/stages.test.mjs",
@@ -28,7 +28,9 @@
     "test:quiz": "node src/lib/study/quiz.test.mjs",
     "test:flashcards": "node src/lib/study/flashcards.test.mjs",
     "test:progress": "node src/lib/study/progress.test.mjs",
-    "test:coursework": "node src/lib/coursework/coursework.test.mjs"
+    "test:coursework": "node src/lib/coursework/coursework.test.mjs",
+    "test:usage": "node src/lib/billing/usage.test.mjs",
+    "test:limits": "node src/lib/limits.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

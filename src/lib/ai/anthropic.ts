@@ -62,7 +62,16 @@ export function anthropicModel(apiKey?: string): LanguageModel {
         throw new Error('The model ran out of room before finishing. Try a shorter source.');
       }
 
-      return { text, producedBy: `${message.model} (Anthropic)` };
+      return {
+        text,
+        producedBy: `${message.model} (Anthropic)`,
+        // The vendor's own count, not ours. `count_tokens` before the call
+        // would be an estimate; this is what was billed.
+        usage: {
+          inputTokens: message.usage?.input_tokens,
+          outputTokens: message.usage?.output_tokens,
+        },
+      };
     },
   };
 }

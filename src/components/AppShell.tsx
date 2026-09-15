@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles, UserRound } from 'lucide-react';
+import { Bell, BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles, UserRound } from 'lucide-react';
 import type { Person } from '@/lib/domain/types';
 import { ROLE_LABEL, type Role } from '@/lib/capabilities';
 
@@ -10,15 +10,18 @@ const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/lectures', label: 'Lectures', icon: BookOpen },
   { href: '/courses', label: 'Courses', icon: GraduationCap },
+  { href: '/notifications', label: 'What happened', icon: Bell },
   { href: '/profile', label: 'My profile', icon: UserRound },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function AppShell({
-  actor, people, children,
+  actor, people, unread = 0, children,
 }: {
   actor: { id: string; role: Role; name: string };
   people: Person[];
+  /** How many notifications are waiting. Shown on the bell, nowhere else. */
+  unread?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -53,6 +56,11 @@ export function AppShell({
               >
                 <Icon size={16} />
                 {label}
+                {href === '/notifications' && unread > 0 && (
+                  <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    {unread}
+                  </span>
+                )}
               </Link>
             );
           })}

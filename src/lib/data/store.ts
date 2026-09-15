@@ -23,6 +23,8 @@ import type {
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
+import type { RunCost, UsageRecord } from '../billing/usage';
+import type { Notification } from '../notify/notifications';
 
 export interface Store {
   /** Which implementation this is, shown in Settings. */
@@ -74,6 +76,16 @@ export interface Store {
 
   attempts(studyAidId: string, personId?: string): Promise<QuizAttempt[]>;
   saveAttempt(attempt: QuizAttempt): Promise<QuizAttempt>;
+
+  /** What each run cost, and what each account has processed. */
+  costs(courseId: string): Promise<RunCost[]>;
+  recordCost(cost: RunCost): Promise<void>;
+  usage(personId: string): Promise<UsageRecord[]>;
+  recordUsage(record: UsageRecord): Promise<void>;
+
+  notifications(personId: string): Promise<Notification[]>;
+  notify(notification: Notification): Promise<void>;
+  markNotificationsRead(personId: string): Promise<void>;
 
   readings(courseId: string): Promise<Reading[]>;
   saveReading(reading: Reading): Promise<Reading>;

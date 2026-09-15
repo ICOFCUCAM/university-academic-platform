@@ -30,7 +30,7 @@ Three kinds of entry:
 | **Authentication** | Stubbed — a demonstration switcher, labelled as one | Supabase Auth, SSO, password reset, sessions: none. `src/lib/session.ts` is the only file that would change. |
 | **Database** | Stubbed — in-process store with an optional JSON snapshot | Nothing survives a deployment. The `Store` interface is the seam; no Postgres/Supabase implementation exists. |
 | **Job queue** | Stubbed — in-process, single worker, three retries | Survives neither a restart nor a second instance. No broker, no dead-letter handling, no back-pressure. |
-| **Notifications** | **Not built** | "Notification" is the last box of the specification's job diagram. Nothing tells a lecturer their lecture finished processing. |
+| **Notifications** | **Built, in-app.** A bell with a count, raised when a stage finishes or fails, a translation is ready, work is set or returned, or an allowance runs out. No email or push (a vendor and a consent conversation). |
 
 ## 2. The student's learning objects
 
@@ -86,7 +86,7 @@ Three kinds of entry:
 | | State |
 |---|---|
 | **Payments** | **Not built.** No checkout, no subscription, no invoices. `access: 'paid'` behaves exactly as enrolment-only, which is the safe direction. |
-| **The minute meter** | **Not wired.** `billing/plans.ts` has the allowances and `mayProcess` computes a refusal — and nothing calls it. An upload is never checked against a plan. |
+| **The minute meter** | **Wired.** `addLecture` checks the account's plan before anything is processed, records the minutes, and notifies when the allowance is spent. |
 | **Credits** | **Not built.** |
 | **Independent educators** | Stubbed. `Publisher` exists as a type and `departmentId` is optional; there is no sign-up, no publisher-owned tenancy, no isolation between publishers. |
 | **Cross-university libraries / partnerships** | Stubbed. `Course.partners` records intent; no federation, no sharing, no sync. |
@@ -108,8 +108,8 @@ Three kinds of entry:
 - **The demonstration data is invented** — a university, a lecturer, a student, a French translation I wrote by hand. Nothing in `seed.ts` is a real institution or person, and the French notes are not machine output.
 - **No accessibility section** in the learning profile, though the specification's sketch has one. No captions model, no dyslexia-friendly typography, no screen-reader audit has been done.
 - **No audit log** of who read what. Reasonable for now; a university will ask.
-- **No rate limiting** anywhere, including on the Course AI, which costs money per question.
-- **No cost accounting per lecture** — nothing records what a transformation cost, which is what a university will want before it buys.
+- **Rate limiting** is per process: one deployment is one bucket, two instances are two. Enough for a single installation, replaceable by design.
+- **Cost accounting** records every run from the vendor's own reported usage — and says *unmetered* rather than showing a confident zero where no vendor reported any. No currency conversion: tokens and characters, not dollars.
 - **Deviation: the teaching script teaches** ("Before we get to the two stages…") rather than avoiding podcast framing, following the later specification over the earlier one.
 - **Deviation: students do not upload lectures** on a course. A personal library exists in the model (`Lecture.context: 'personal'`) and has no screens — the specification moved to "the student is the consumer, not the supplier", and the code followed.
 
