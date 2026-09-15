@@ -64,6 +64,38 @@ Recording → Transcript v1 → AI processing v1 → lecturer corrections → Pu
                                                           version
 ```
 
+## The AI's job is transformation, not adjudication
+
+The processing model works under a contract (`src/lib/ai/contract.ts`), prefixed
+verbatim to every transformation, and `prompts.test.mjs` fails if any stage is
+missing it:
+
+> **ROLE: LECTURE TRANSFORMATION ENGINE.** You are NOT a fact checker. You are
+> NOT an academic reviewer. You are NOT permitted to correct factual claims,
+> add information that was not in the lecture, or remove a claim because you
+> believe it incorrect, controversial, biased, incomplete or unconventional.
+> When uncertain whether a change would alter meaning, preserve the original
+> wording.
+
+It is not asked to *correct* anything. It is asked to perform a **constrained
+linguistic transformation** with an enumerated list of permitted operations —
+grammar, spelling, punctuation, sentence structure, filler, repetition,
+paragraphing, headings, bullets — and an equally explicit list of forbidden
+ones, factual correction and adding context among them.
+
+Then a **verification pass** asks the only question worth asking about the
+result: *did it introduce, remove or alter any substantive claim?* Not whether
+the lecturer is right. The review screen shows the diff of claims.
+
+If the lecturer taught that the Roman Empire fell because Christianity weakened
+its military, that is what the student receives. Whether it is sound is the
+lecturer's business, on the review screen, in their own words.
+
+**The model is not chosen yet.** `bench/` is a preservation benchmark — sixteen
+passages written to tempt a model into being helpful, scored mechanically.
+Claude is wired first; another vendor is one file against the same interface.
+The winner is the model that preserves best, not the one that knows most.
+
 ## Who owns what
 
 | | Owns |

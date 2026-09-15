@@ -24,9 +24,12 @@ export function LectureCompanion({
           compact
           suggestions={[
             `What was the main argument of ${lectureTitle}?`,
+            'Create a 10-question test on this lecture.',
+          ]}
+          followUps={[
             'Give me a simple explanation.',
             'Now the university-level explanation.',
-            'Create a 10-question test on this lecture.',
+            'Which lecture introduced this concept?',
           ]}
         />
       </div>

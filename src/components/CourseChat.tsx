@@ -23,11 +23,18 @@ export interface Turn {
  * cover something it says so rather than reaching for general knowledge.
  */
 export function CourseChat({
-  courseId, lectureSequence, suggestions, compact = false,
+  courseId, lectureSequence, suggestions, followUps = [], compact = false,
 }: {
   courseId: string;
   lectureSequence?: number;
+  /** Shown before the first question: each has to stand on its own. */
   suggestions: string[];
+  /**
+   * Shown after an answer. "Give me a simple explanation" and "which lecture
+   * introduced this?" refer to what is already on the screen, so offering
+   * them cold produces a question with no subject.
+   */
+  followUps?: string[];
   compact?: boolean;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -152,6 +159,19 @@ export function CourseChat({
             </div>
           )
         ))}
+
+        {turns.length > 0 && !busy && followUps.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {followUps.map((s) => (
+              <button
+                key={s} type="button" onClick={() => ask(s)}
+                className="rounded-full border border-page-line bg-white px-3 py-1.5 text-xs text-ink-soft hover:border-brand/40 hover:text-brand-dark"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
 
         {busy && (
           <p className="flex items-center gap-2 text-sm text-ink-faint">

@@ -25,6 +25,7 @@ import { mayRun, STAGE_BY_KIND, staleAfterEdit, studentFacingKinds } from './pip
 import { parseExtract, runTransformation } from './ai/transform';
 import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
+import { verifyTransformation } from './ai/verify';
 import type { Engine } from './ai/provider';
 import type { Store } from './data/store';
 
@@ -150,6 +151,16 @@ export async function runStage(
       });
       artefact.body = result.text;
       artefact.producedBy = result.producedBy;
+
+      // ---- THE VERIFICATION PASS ---------------------------------------
+      //
+      // The transformation is done; now a second pass asks the only question
+      // worth asking about it — did any substantive claim move? The lecturer
+      // reviews a report of changes rather than re-reading twelve thousand
+      // words against twelve thousand words.
+      if (kind === 'corrected_text') {
+        artefact.verification = await verifyTransformation(e, source!.body ?? '', result.text);
+      }
 
       // The extraction is not read by a person; it is merged into the course.
       if (kind === 'knowledge_extract') {

@@ -16,7 +16,8 @@
     "test:tutor": "node src/lib/ai/tutor.test.mjs",
     "test:jobs": "node src/lib/jobs/plan.test.mjs",
     "test:service": "node src/lib/service.test.mjs",
-    "test:prompts": "node src/lib/ai/prompts.test.mjs"
+    "test:prompts": "node src/lib/ai/prompts.test.mjs",
+    "bench": "node bench/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

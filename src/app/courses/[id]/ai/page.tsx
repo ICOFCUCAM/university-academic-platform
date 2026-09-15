@@ -26,6 +26,10 @@ export default async function CourseAIPage({ params }: { params: { id: string } 
   const knowledge = await knowledgeBase(store, course.id);
   const lectures = await store.lectures(course.id);
   const last = Math.max(1, ...knowledge.coverage.filter((c) => c.extracted).map((c) => c.lectureSequence));
+  // The opening suggestion names something this course actually teaches, so a
+  // student's first question is answerable rather than a demonstration of the
+  // refusal.
+  const topics = knowledge.nodes.filter((n) => n.definedIn).map((n) => n.term);
 
   return (
     <div className="flex h-screen flex-col">
@@ -38,11 +42,14 @@ export default async function CourseAIPage({ params }: { params: { id: string } 
         <CourseChat
           courseId={course.id}
           suggestions={[
-            'Explain photosynthesis based on our lectures.',
-            'Which lecture introduced this concept?',
-            'Give me a simple explanation.',
+            ...(topics.length ? [`Explain ${topics[0].toLowerCase()} based on our lectures.`] : []),
             'Create a 10-question test.',
             `Create a 15-minute audio revision covering lectures 1–${Math.min(last, lectures.length)}.`,
+          ]}
+          followUps={[
+            'Which lecture introduced this concept?',
+            'Give me a simple explanation.',
+            'Now the university-level explanation.',
           ]}
         />
       </div>

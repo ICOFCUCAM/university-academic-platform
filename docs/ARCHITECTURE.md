@@ -90,7 +90,60 @@ merges them, and three findings fall out that no single lecture can show:
 - **What the course uses and never defines** — the gap invisible from inside any
   one lecture.
 
-## 6. The engine is behind an interface
+## 6. Two passes, and a third that checks the second
+
+**Pass 1 — a faithful transcript.** Speech to text, no interpretation.
+
+**Pass 2 — a constrained linguistic transformation.** Not "correct the
+transcript" — that invites the model to use what it knows. The instruction
+names the operations it may perform (`src/lib/ai/operations.ts`):
+
+```
+ALLOWED    grammar · spelling · punctuation · sentence structure ·
+           remove filler · remove repetition · paragraphing · headings ·
+           bullet structure
+
+FORBIDDEN  factual correction · fact checking · adding knowledge ·
+           removing knowledge · changing opinions · changing interpretations ·
+           adding counterarguments · adding context ·
+           normalising controversial claims ·
+           replacing claims with "more accurate" claims
+```
+
+**Pass 3 — verification** (`src/lib/ai/verify.ts`). One question, and it is
+not "is the lecturer correct?":
+
+> Did the transformed version introduce, remove or alter any substantive claim?
+
+```
+Original claim:  Christianity weakened the Roman military.
+Output claim:    Christianity weakened the Roman military.
+STATUS:          ✓ Preserved
+```
+
+A claim the verifier believes false is still **preserved** if it survived
+unchanged. The report reaches the review screen as "sixteen claims preserved,
+one altered — here it is", so a lecturer reads a diff of claims rather than
+twelve thousand words against twelve thousand words. A verifier that could not
+run says *not verified*; it never reads as a clean bill of health.
+
+The audio inherits the same discipline: the script prompt asks for *a spoken
+condensation of the supplied lecture content, using only information contained
+in the source material* — never "an educational podcast about this topic",
+which is an instruction to use general knowledge. The speech engine needs to
+know nothing about the subject; it speaks an approved script.
+
+## 6b. The model is not chosen yet
+
+`bench/` is the **Lecture Preservation Benchmark**: sixteen passages chosen to
+tempt a model into helping, scored mechanically. Claude is wired first because
+this build was written against it; Gemini and OpenAI models are one file each
+against the same `LanguageModel` interface. **The winner is the model that
+preserves best, not the one that knows most**, and any case where the model
+changed what was taught is disqualifying. See `bench/README.md`. It has not
+been run: this environment has no API key.
+
+## 7. The engine is behind an interface
 
 `src/lib/ai/provider.ts` names three machines — transcription, a language
 model, speech — and `engine.ts` resolves what is actually configured.
@@ -106,7 +159,7 @@ material is thin it writes `[unclear in the recording]` rather than filling the
 gap, and the review screen offers **original | corrected** side by side so the
 rule can be checked rather than trusted.
 
-## 7. A ninety-minute lecture is not processed in an HTTP request
+## 8. A ninety-minute lecture is not processed in an HTTP request
 
 `src/lib/jobs/` — the upload creates jobs and returns; a worker runs them in
 order; each writes its artefact as it finishes. A failure is retried three
@@ -114,7 +167,7 @@ times, then stops with its reason kept, and takes its dependents with it. On a
 taught course the plan stops at the approval gate; in a personal library it
 runs end to end.
 
-## 8. What is not built
+## 9. What is not built
 
 Named plainly, because a roadmap read as a feature list is how software gets
 bought twice:

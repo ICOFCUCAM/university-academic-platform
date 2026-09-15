@@ -268,6 +268,23 @@ export async function answer(e: Engine, input: AnswerInput): Promise<AnswerResul
   if (intent.kind === 'locate') {
     const found = locate(input.knowledge, input.question, lastStudentTurn?.body);
     if (found) return found;
+
+    // "WHICH LECTURE INTRODUCED THIS CONCEPT?" ASKED COLD. There is no
+    // "this" yet, and answering "the course does not cover that" is both
+    // untrue and unhelpful — the question was about the course, not about a
+    // concept. Ask which one, and name some.
+    const named = input.knowledge.nodes.filter((n) => n.definedIn).slice(0, 8).map((n) => n.term);
+    if (named.length) {
+      return {
+        body: [
+          'Which concept do you mean?',
+          '',
+          `I can say exactly where any of these was introduced: ${named.join(', ')}.`,
+        ].join('\n'),
+        citations: [],
+        producedBy: 'course knowledge base',
+      };
+    }
   }
 
   // ---- THE SECOND BOUNDARY, AND IT IS A DOOR THE STUDENT OPENS ----------

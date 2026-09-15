@@ -184,6 +184,14 @@ export interface Artefact {
   /** Set when a transformation fails, and shown to the lecturer verbatim. */
   error?: string;
 
+  /**
+   * THE SECOND PASS. Whether the transformation introduced, removed or altered
+   * a substantive claim — not whether the lecturer was right. Absent means it
+   * has not been checked, which the review screen says out loud rather than
+   * leaving blank.
+   */
+  verification?: import('../ai/verify').VerificationReport;
+
   createdAt: string;
   updatedAt: string;
 

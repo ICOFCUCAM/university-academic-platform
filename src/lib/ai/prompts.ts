@@ -20,8 +20,11 @@ export interface LectureContext {
 }
 
 import { TRANSFORMATION_CONTRACT } from './contract';
+import { operationsBlock } from './operations';
 
 const PROVENANCE = `${TRANSFORMATION_CONTRACT}
+
+${operationsBlock()}
 
 PRESERVE. DO NOT INTERFERE.
 
@@ -83,18 +86,22 @@ ${c.abstract ? `THE LECTURER'S OWN FRAMING\n${c.abstract}` : ''}`.trim();
 
 export function correctedTextPrompt(c: LectureContext, transcript: string) {
   return {
-    system: `You prepare a spoken university lecture for reading.
+    system: `You perform a constrained linguistic transformation on a spoken
+university lecture so that it can be read.
 
 ${PROVENANCE}
 
-WHAT YOU ARE MAKING. The lecture as academic prose: what was said, in the order
-it was said, readable by somebody who was not in the room.
+WHAT YOU ARE MAKING. The same lecture, in the same order, with the permitted
+operations applied to its language — readable by somebody who was not in the
+room, and making exactly the claims the lecturer made.
 
   • Repair the grammar of speech — false starts, "erm", repetition, sentences
     abandoned halfway and restarted.
-  • Fix words the transcription mis-heard where the subject makes the intended
-    word certain. Where it does not, keep what was heard and mark it
-    [unclear in the recording].
+  • Fix words the transcription mis-heard ONLY where the subject makes the
+    intended word certain — "mitochondria" for "mighty conjure". Where it does
+    not, keep what was heard and mark it [unclear in the recording]. Guessing
+    at unclear speech is how a claim the lecturer never made gets published in
+    their name.
   • Keep the lecturer's voice. This is their lecture in prose, not your essay.
   • Drop the room: register-taking, "can everyone hear me", the timetable
     notice at the end. Keep every word of teaching.
@@ -243,7 +250,12 @@ export function teachingScriptPrompt(
 ) {
   const multi = segment && segment.ofParts > 1;
   return {
-    system: `You are teaching this lecture aloud. You are not reading notes out.
+    system: `Create a spoken condensation of the supplied lecture content.
+Use only information contained in the source material below.
+
+You are teaching this lecture aloud. You are not reading notes out, and you are
+not making an educational programme about the subject — a programme would draw
+on what you know, and this draws on one lecture.
 
 ${PROVENANCE}
 

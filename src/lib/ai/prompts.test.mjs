@@ -75,4 +75,45 @@ const script = P.teachingScriptPrompt(context, 'notes', M.MODE_BY_ID.lesson_15, 
 t.check('traceable to the notes', script.system.includes('Everything you say must be traceable to the notes'), true);
 t.check('…and what the lecturer left out stays out', script.system.includes('it stays out'), true);
 
+t.section('The transformation is an enumerated set of operations, not "correct this"');
+const O = await load('ai/operations.ts');
+const corrected = prompts['corrected text'].system;
+t.check('it is named as a constrained transformation',
+  corrected.includes('PERFORM A CONSTRAINED LINGUISTIC TRANSFORMATION.'), true);
+for (const op of O.ALLOWED_OPERATIONS) {
+  t.check(`allowed: ${op}`, corrected.includes(`✓ ${op}`), true);
+}
+for (const op of O.FORBIDDEN_OPERATIONS) {
+  t.check(`forbidden: ${op}`, corrected.includes(`✗ ${op}`), true);
+}
+t.check('nine operations are permitted', O.ALLOWED_OPERATIONS.length, 9);
+t.check('…and ten are named as forbidden', O.FORBIDDEN_OPERATIONS.length, 10);
+t.check('the Roman example is in the prompt, not only in the documentation',
+  corrected.includes('Historians debate the causes'), true);
+
+t.section('The verifier asks whether a claim moved — not whether it is true');
+const V = await load('ai/verify.ts');
+t.check('its question', V.VERIFIER_SYSTEM.includes('did the transformation introduce, remove or alter any\nsubstantive claim?'), true);
+t.check('…and explicitly not the other one',
+  V.VERIFIER_SYSTEM.includes('YOU ARE NOT ASKING WHETHER THE LECTURER IS CORRECT'), true);
+t.check('a false claim that survived is preserved',
+  V.VERIFIER_SYSTEM.includes('still PRESERVED if\nit survived the transformation unchanged'), true);
+t.check('a lost hedge is an alteration',
+  V.VERIFIER_SYSTEM.includes('Losing the hedge') && V.VERIFIER_SYSTEM.includes('is ALTERED'), true);
+
+// A verifier that cannot run must never read as a clean bill of health.
+const summary = V.summarise([
+  { original: 'a', output: 'a', status: 'preserved' },
+  { original: 'b', output: 'b and c', status: 'altered' },
+  { original: '', output: 'd', status: 'added' },
+]);
+t.check('it counts what was preserved', summary.preserved, 1);
+t.check('…and flags everything else', summary.flagged, 2);
+
+t.section('The audio is a condensation of supplied material, not a programme');
+t.check('it says so in the first line',
+  script.system.startsWith('Create a spoken condensation of the supplied lecture content.'), true);
+t.check('…and bounds the source',
+  script.system.includes('Use only information contained in the source material'), true);
+
 t.done();

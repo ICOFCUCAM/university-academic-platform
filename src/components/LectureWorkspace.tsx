@@ -298,6 +298,40 @@ export function LectureWorkspace({
               </div>
             )}
 
+            {/* THE VERIFIER'S REPORT. Not "is the lecturer right" — "did
+                anything the lecturer said move". */}
+            {shown.verification && (
+              <div className={`rounded-md border px-4 py-3 text-sm ${
+                shown.verification.error ? 'border-page-line bg-page text-ink-soft'
+                  : shown.verification.flagged > 0 ? 'border-amber-200 bg-amber-50'
+                    : 'border-emerald-200 bg-emerald-50'
+              }`}>
+                {shown.verification.error ? (
+                  <p><strong>Not verified.</strong> {shown.verification.error}</p>
+                ) : (
+                  <>
+                    <p>
+                      <strong>
+                        {shown.verification.preserved} claim
+                        {shown.verification.preserved === 1 ? '' : 's'} preserved
+                      </strong>
+                      {shown.verification.flagged > 0
+                        ? `, ${shown.verification.flagged} changed by the transformation.`
+                        : '. Nothing the lecturer said was introduced, removed or altered.'}
+                    </p>
+                    {shown.verification.checks.filter((c) => c.status !== 'preserved').map((c, i) => (
+                      <div key={i} className="mt-2 border-l-2 border-amber-300 pl-3 text-xs">
+                        <p className="font-medium uppercase tracking-wide text-warn">{c.status}</p>
+                        {c.original && <p className="text-ink-soft">Lecture: “{c.original}”</p>}
+                        {c.output && <p className="text-ink-soft">Now: “{c.output}”</p>}
+                        {c.note && <p className="text-ink-faint">{c.note}</p>}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+
             {shown.error && (
               <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-bad">
                 {shown.error}
