@@ -27,6 +27,7 @@ import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
 import { checkTerminology } from './ai/terminology';
+import { applyDecisions, findUnusual, type WordDecision } from './ai/unusual';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
 import type { Store } from './data/store';
@@ -78,6 +79,17 @@ export async function runStage(
   // act on somebody's material — not on the artefact that does not exist yet.
   const permitted = mayAct(actor, 'transform', source!, where);
   if (!permitted.allowed) throw new Refused(permitted.reason!);
+
+  // ---- NOTHING IS SPOKEN THAT NOBODY HAS PROOFREAD ----------------------
+  //
+  // The script is the last text a person sees before it becomes a voice. A
+  // word the system could not place, let through here, is pronounced with
+  // total confidence to somebody who cannot see that it is wrong.
+  if (kind === 'audio_15min' && !source!.wordCheck) {
+    throw new Refused(
+      'Run the word check on the script first. Once it is spoken, a mis-heard word cannot be seen.',
+    );
+  }
 
   const previous = existing.find((a) => a.kind === kind);
   const context = {
@@ -229,6 +241,9 @@ export async function editArtefact(
   artefact.origin = 'lecturer';
   artefact.updatedAt = now();
   artefact.staleSince = undefined;
+  // The words changed after somebody read them, so the reading no longer
+  // stands. `recordWordCheck` sets it again immediately for its own edit.
+  artefact.wordCheck = undefined;
   await store.addVersion({
     id: randomUUID(),
     artefactId: artefact.id,
@@ -578,4 +593,86 @@ export async function addSource(
   });
   if (existing) await markStale(store, artefact);
   return store.saveArtefact(artefact);
+}
+
+
+/** ---- The word check, before anything is spoken ------------------------ */
+
+export interface WordCheckView {
+  artefactId: string;
+  words: ReturnType<typeof findUnusual>;
+  alreadyChecked?: import('./ai/unusual').WordCheck;
+}
+
+/**
+ * What the proofreading pane shows: every word this system could not place, in
+ * its sentence, with a suggestion where the course's own vocabulary supplies
+ * an obvious one.
+ */
+export async function wordCheckFor(
+  store: Store, actor: Actor, artefactId: string,
+): Promise<WordCheckView> {
+  const artefact = await store.artefact(artefactId);
+  if (!artefact) throw new Refused('No such artefact.');
+  const where = await sceneOf(store, artefact, actor.id);
+  const permitted = mayAct(actor, 'read', artefact, where);
+  if (!permitted.allowed) throw new Refused(permitted.reason!);
+
+  const knowledge = await knowledgeBase(store, artefact.courseId);
+  // The course's other lectures are the vocabulary of this subject. A word
+  // this course has used before needs no query; a word nothing has used is
+  // exactly what has to be read before it is spoken.
+  const corpus = (await store.artefactsForCourse(artefact.courseId))
+    .filter((a) => a.id !== artefact.id && a.body
+      && (a.state === 'published' || a.state === 'approved'))
+    .map((a) => a.body)
+    .join('\n\n');
+
+  return {
+    artefactId,
+    words: findUnusual(artefact.body ?? '', {
+      glossary: where.course.terminology,
+      courseTerms: knowledge.nodes.map((n) => n.term),
+      corpus,
+    }),
+    alreadyChecked: artefact.wordCheck,
+  };
+}
+
+/**
+ * The lecturer has been through the list. Replacements are applied as a
+ * correction — a new version, authored by them — and the audio stage opens.
+ */
+export async function recordWordCheck(
+  store: Store, actor: Actor, artefactId: string, decisions: WordDecision[],
+): Promise<Artefact> {
+  const artefact = await store.artefact(artefactId);
+  if (!artefact) throw new Refused('No such artefact.');
+  const where = await sceneOf(store, artefact, actor.id);
+  const permitted = mayAct(actor, 'edit', artefact, where);
+  if (!permitted.allowed) throw new Refused(permitted.reason!);
+
+  const replaced = decisions.filter((d) => d.action === 'replaced' && d.replacement);
+  const person = await store.person(actor.id);
+
+  if (replaced.length) {
+    // THE REPLACEMENTS ARE A LECTURER'S CORRECTION, and are recorded as one:
+    // a new version in their name, and everything built on this marked stale.
+    await editArtefact(
+      store, actor, artefactId,
+      applyDecisions(artefact.body ?? '', replaced),
+      `Word check: ${replaced.map((d) => `${d.word} → ${d.replacement}`).join(', ')}`,
+    );
+  }
+
+  const updated = (await store.artefact(artefactId))!;
+  updated.wordCheck = {
+    checkedAt: now(),
+    checkedBy: person?.name ?? actor.id,
+    decisions,
+    flagged: decisions.length,
+  };
+  // A check is about the words that are there now. Correcting the text later
+  // clears it, because the words changed after somebody read them.
+  return store.saveArtefact(updated);
 }

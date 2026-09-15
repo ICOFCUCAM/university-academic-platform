@@ -206,6 +206,15 @@ export interface Artefact {
    */
   terminology?: import('../ai/terminology').TerminologyFinding[];
 
+  /**
+   * THE WORD CHECK. Set once a person has been through the words this system
+   * could not place and has accepted or replaced each one. The audio stage
+   * refuses to run without it: a mis-transcribed word in a text is a typo a
+   * reader shrugs at, and in the audio it is a confident voice saying
+   * something that was never taught.
+   */
+  wordCheck?: import('../ai/unusual').WordCheck;
+
   createdAt: string;
   updatedAt: string;
 

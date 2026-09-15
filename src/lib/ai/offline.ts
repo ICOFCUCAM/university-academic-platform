@@ -63,10 +63,14 @@ function definitions(list: string[]): { term: string; definition: string; quote:
 
 /** Which way is this prompt pointing? The system prompt names its own job. */
 function intentOf(system: string): 'correct' | 'notes' | 'extract' | 'script' | 'revision' | 'tutor' | 'studyaid' {
+  // ORDER MATTERS, AND THE MARKERS ARE THE PROMPTS' OWN OPENING LINES. Matching
+  // on a word that appears in several prompts produced a "teaching script"
+  // that was a set of revision questions — which is what happens when a
+  // detector guesses.
   if (system.includes('extract what a lecture teaches')) return 'extract';
-  if (system.includes('structured notes a student revises from')) return 'notes';
-  if (system.includes('READ ALOUD')) return 'script';
-  if (system.includes('revision materials')) return 'revision';
+  if (system.startsWith('Create a spoken condensation')) return 'script';
+  if (system.includes('the notes a student actually revises from')) return 'notes';
+  if (system.startsWith('You make revision material')) return 'revision';
   if (system.includes('course assistant')) return 'tutor';
   if (system.includes('You make study material')) return 'studyaid';
   return 'correct';

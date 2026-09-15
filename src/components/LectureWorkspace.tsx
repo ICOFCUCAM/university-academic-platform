@@ -7,6 +7,7 @@ import type { Artefact, ArtefactKind, Lecture } from '@/lib/domain/types';
 import { MODES, PERSONAS, type AudioMode, type Persona } from '@/lib/ai/audioModes';
 import { REVISION_LABEL, type RevisionKind } from '@/lib/ai/prompts';
 import { Markdown } from '@/components/Markdown';
+import { WordCheck } from '@/components/WordCheck';
 import { StateBadge } from '@/components/ui';
 
 interface Stage {
@@ -40,6 +41,7 @@ export function LectureWorkspace({
   const [persona, setPersona] = useState<Persona>('tutor');
   const [revision, setRevision] = useState<RevisionKind>('full');
   const [compare, setCompare] = useState(false);
+  const [checkingWords, setCheckingWords] = useState(false);
 
   const byKind = useMemo(
     () => Object.fromEntries(artefacts.map((a) => [a.kind, a])) as Partial<Record<ArtefactKind, Artefact>>,
@@ -100,9 +102,14 @@ export function LectureWorkspace({
         {stages.map((stage) => {
           const artefact = byKind[stage.kind];
           const state = artefact?.state ?? 'absent';
+          const source = stage.from ? byKind[stage.from] : undefined;
+          // THE AUDIO HAS A SECOND GATE: the words of the script have to have
+          // been read by a person. A voice cannot be proofread by its listener.
+          const wordsUnchecked = stage.kind === 'audio_15min' && !source?.wordCheck;
           const blocked = stage.from
-            ? !['ready', 'approved', 'published'].includes(byKind[stage.from]?.state ?? '')
-              || (stage.requiresApprovedSource && byKind[stage.from]?.state === 'ready')
+            ? !['ready', 'approved', 'published'].includes(source?.state ?? '')
+              || (stage.requiresApprovedSource && source?.state === 'ready')
+              || wordsUnchecked
             : false;
 
           return (
@@ -127,6 +134,11 @@ export function LectureWorkspace({
                     Made from an older version — regenerate.
                   </p>
                 )}
+                {wordsUnchecked && !artefact && (
+                  <p className="mt-1 text-[11px] text-warn">
+                    Check the script’s words first.
+                  </p>
+                )}
               </button>
 
               {canEdit && stage.from && (
@@ -135,7 +147,9 @@ export function LectureWorkspace({
                   onClick={() => run(stage.kind)}
                   disabled={busy !== null || blocked}
                   className="mt-2 inline-flex items-center gap-1.5 rounded border border-page-line bg-white px-2 py-1 text-[11px] text-ink-soft disabled:opacity-40 hover:border-brand/40"
-                  title={blocked ? `${stages.find((s) => s.kind === stage.from)?.label} must be approved first` : ''}
+                  title={wordsUnchecked
+                    ? 'Check the words of the script first — a spoken mistake cannot be seen'
+                    : blocked ? `${stages.find((s) => s.kind === stage.from)?.label} must be approved first` : ''}
                 >
                   {busy === stage.kind ? <Loader2 size={12} className="animate-spin" /> : artefact ? <RotateCw size={12} /> : <Play size={12} />}
                   {artefact ? 'Regenerate' : 'Generate'}
@@ -242,6 +256,18 @@ export function LectureWorkspace({
                       </button>
                     </>
                   )}
+                  {shown.kind === 'teaching_script' && (
+                    <button
+                      type="button" onClick={() => setCheckingWords((v) => !v)}
+                      className={`rounded border px-2.5 py-1.5 text-xs ${
+                        shown.wordCheck
+                          ? 'border-emerald-300 bg-emerald-50 text-ok'
+                          : 'border-amber-300 bg-amber-50 text-warn'
+                      }`}
+                    >
+                      {shown.wordCheck ? `Words checked by ${shown.wordCheck.checkedBy}` : 'Check the words'}
+                    </button>
+                  )}
                   {shown.state === 'ready' && (
                     <button
                       type="button" onClick={() => act(shown, 'approve')}
@@ -289,6 +315,13 @@ export function LectureWorkspace({
                 <span className="font-semibold uppercase tracking-wide text-ok">Corrected by the lecturer</span>
                 {' — this is the authoritative version. Everything built from it is regenerated from here.'}
               </div>
+            )}
+
+            {checkingWords && shown.kind === 'teaching_script' && (
+              <WordCheck
+                artefactId={shown.id}
+                onDone={() => { setCheckingWords(false); router.refresh(); }}
+              />
             )}
 
             {shown.state === 'ready' && canEdit && (
