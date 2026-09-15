@@ -52,9 +52,18 @@ export function StateBadge({ state }: { state: ArtefactState }) {
   );
 }
 
-export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children, className = '', dir,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  /** Set where the card holds material in a right-to-left language. */
+  dir?: 'ltr' | 'rtl';
+}) {
   return (
-    <section className={`rounded-lg border border-page-line bg-page-card ${className}`}>{children}</section>
+    <section dir={dir} className={`rounded-lg border border-page-line bg-page-card ${className}`}>
+      {children}
+    </section>
   );
 }
 

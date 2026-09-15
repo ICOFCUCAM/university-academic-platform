@@ -17,7 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Artefact, ArtefactKind, ArtefactVersion, Course, Enrolment, Lecture, Person,
-  Register, StudyAid,
+  QuizAttempt, Register, StudyAid,
 } from './domain/types';
 import { mayAct, type Actor } from './domain/ownership';
 import { can } from './capabilities';
@@ -34,6 +34,8 @@ import { translationPrompt, tutorLanguageNote } from './i18n/translate';
 import { validateTranslation } from './i18n/validate';
 import { LANGUAGE_BY_CODE, languageName, TRANSLATABLE as TRANSLATABLE_KINDS } from './i18n/languages';
 import { applyDecisions, findUnusual, type WordDecision } from './ai/unusual';
+import { cohortShape, myProgress, neglected, type LearningEvent } from './study/progress';
+import { mark, parseQuiz } from './study/quiz';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
 import type { Store } from './data/store';
@@ -1196,4 +1198,111 @@ export async function revokeOwnVoice(store: Store, actor: Actor): Promise<Person
     ...person,
     voiceConsent: { ...person.voiceConsent, revokedAt: now() },
   });
+}
+
+/** ---- Studying: what a student did, and what a cohort did --------------- */
+
+/**
+ * A student read the notes, listened to the lesson, worked through the
+ * revision. Recorded from the screen that showed it, and recorded ONCE a day
+ * per thing — a page they keep coming back to is one reader, not forty.
+ */
+export async function recordStudy(
+  store: Store, actor: Actor, input: {
+    courseId: string; lectureId: string; artefactKind?: ArtefactKind; event: LearningEvent;
+  },
+): Promise<void> {
+  const where = await scene(store, input.courseId, actor.id);
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') return;
+
+  const already = await store.progress(input.courseId, actor.id);
+  const today = now().slice(0, 10);
+  const duplicate = already.some((r) => r.lectureId === input.lectureId
+    && r.event === input.event && r.artefactKind === input.artefactKind && r.at.slice(0, 10) === today);
+  if (duplicate) return;
+
+  await store.recordProgress({
+    id: randomUUID(),
+    personId: actor.id,
+    courseId: input.courseId,
+    lectureId: input.lectureId,
+    artefactKind: input.artefactKind,
+    event: input.event,
+    at: now(),
+  });
+}
+
+/** What this person has done on this course. Theirs, and nobody else's. */
+export async function myProgressOn(store: Store, actor: Actor, courseId: string) {
+  const [records, lectures] = await Promise.all([
+    store.progress(courseId, actor.id), store.lectures(courseId),
+  ]);
+  return myProgress(records, lectures.map((l) => l.id));
+}
+
+/**
+ * What the cohort has done. COUNTS, never a name — `cohortShape` reduces
+ * `personId` to a set size and nothing downstream can recover it, so a
+ * lecturer cannot learn from this screen that one student has read nothing.
+ */
+export async function cohortOn(store: Store, actor: Actor, courseId: string) {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  if (!teaching && !can(actor.role, 'view-engagement')) {
+    throw new Refused('Engagement on a course is visible to the people who teach it.');
+  }
+
+  const [records, lectures, enrolments] = await Promise.all([
+    store.progress(courseId), store.lectures(courseId), store.enrolments(courseId),
+  ]);
+  const cohortSize = enrolments.filter((e) => e.status === 'registered').length;
+  const rows = cohortShape(records, lectures.map((l) => l.id));
+  return { rows, cohortSize, neglected: neglected(rows, cohortSize) };
+}
+
+/** ---- Sitting a quiz ---------------------------------------------------- */
+
+export async function sitQuiz(
+  store: Store, actor: Actor, studyAidId: string, given: Record<number, string>,
+): Promise<{ attempt: QuizAttempt; marked: ReturnType<typeof mark> }> {
+  const aid = await store.studyAidById(studyAidId);
+  if (!aid) throw new Refused('No such quiz.');
+
+  const where = await scene(store, aid.courseId, actor.id);
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') {
+    throw new Refused('This course is not one of yours.');
+  }
+
+  const quiz = parseQuiz(aid.body ?? '');
+  const marked = mark(quiz, given);
+
+  const attempt: QuizAttempt = {
+    id: randomUUID(),
+    studyAidId,
+    courseId: aid.courseId,
+    lectureIds: aid.lectureIds,
+    personId: actor.id,
+    given,
+    score: marked.score,
+    outOf: marked.outOf,
+    takenAt: now(),
+  };
+  await store.saveAttempt(attempt);
+
+  // One record per lecture the quiz covered, so a lecturer sees which lecture
+  // the cohort is being tested on rather than which quiz object was opened.
+  for (const lectureId of aid.lectureIds) {
+    await store.recordProgress({
+      id: randomUUID(),
+      personId: actor.id,
+      courseId: aid.courseId,
+      lectureId,
+      event: 'quiz-taken',
+      score: marked.score,
+      outOf: marked.outOf,
+      at: now(),
+    });
+  }
+
+  return { attempt, marked };
 }

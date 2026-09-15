@@ -469,6 +469,27 @@ export interface StudyAid {
  */
 export type Register = 'plain' | 'university';
 
+/** ---- Sitting a quiz --------------------------------------------------- */
+
+/**
+ * One attempt at one quiz. Kept because "I got six out of ten last week" is
+ * the whole point of sitting it twice — and because a cohort's average is what
+ * tells a lecturer which lecture did not land.
+ */
+export interface QuizAttempt {
+  id: string;
+  studyAidId: string;
+  courseId: string;
+  lectureIds: string[];
+  personId: string;
+  /** Question number → the letter or the written answer they gave. */
+  given: Record<number, string>;
+  /** Marked automatically. Written answers are not machine-marked. */
+  score: number;
+  outOf: number;
+  takenAt: string;
+}
+
 /** ---- The Course AI ---------------------------------------------------- */
 
 export interface TutorCitation {

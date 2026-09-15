@@ -257,6 +257,8 @@ export const DEMO: Snapshot = {
     ],
   },
   studyAids: [],
+  progress: [],
+  attempts: [],
   conversations: [],
   messages: [],
 };

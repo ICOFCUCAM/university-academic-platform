@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { Bot, FileText, Headphones, Plus, ScrollText } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
-import { knowledgeBase } from '@/lib/service';
+import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
+import { TodaysLearning } from '@/components/TodaysLearning';
 import { Card, Empty, PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,11 @@ export default async function CoursePage({ params }: { params: { id: string } })
     store.lectures(course.id), store.artefactsForCourse(course.id),
     knowledgeBase(store, course.id), store.people(), store.enrolments(course.id),
   ]);
+
+  // What this person has done, and — for whoever teaches it — what the cohort
+  // has done, in counts and never in names.
+  const myWork = await myProgressOn(store, actor, course.id);
+  const cohort = teaching ? await cohortOn(store, actor, course.id) : null;
   const lecturers = people.filter((p) => course.lecturerIds.includes(p.id));
 
   return (
@@ -86,6 +92,34 @@ export default async function CoursePage({ params }: { params: { id: string } })
                   )}
                 </div>
                 {lecture.abstract && <p className="mt-1 text-sm text-ink-soft">{lecture.abstract}</p>}
+                {student && (
+                  <TodaysLearning
+                    courseId={course.id}
+                    lectureId={lecture.id}
+                    progress={myWork.find((p) => p.lectureId === lecture.id)}
+                    has={{
+                      notes: published.some((a) => a.kind === 'structured_notes'),
+                      audio: published.some((a) => a.kind === 'audio_15min'),
+                      revision: published.some((a) => a.kind === 'revision_materials'),
+                    }}
+                  />
+                )}
+
+                {cohort && (() => {
+                  const row = cohort.rows.find((r) => r.lectureId === lecture.id);
+                  if (!row) return null;
+                  const quiet = cohort.neglected.some((n) => n.lectureId === lecture.id);
+                  return (
+                    <p className={`mt-2 text-xs ${quiet ? 'text-warn' : 'text-ink-faint'}`}>
+                      {row.readers} of {cohort.cohortSize} have read it
+                      {row.listeners ? ` · ${row.listeners} listened` : ''}
+                      {row.quizzesTaken ? ` · ${row.quizzesTaken} sat the quiz` : ''}
+                      {row.averageScore !== undefined ? `, averaging ${row.averageScore}%` : ''}
+                      {quiet && ' — worth a word in the next class'}
+                    </p>
+                  );
+                })()}
+
                 <div className="mt-3 flex flex-wrap gap-2">
                   {visible.map((a) => {
                     const Icon = ICON[a.kind as keyof typeof ICON] ?? FileText;

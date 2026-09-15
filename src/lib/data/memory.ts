@@ -11,8 +11,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   Artefact, ArtefactVersion, Course, Department, Enrolment, Faculty, Lecture,
-  Person, StudyAid, TutorConversation, TutorMessage, University,
+  Person, QuizAttempt, StudyAid, TutorConversation, TutorMessage, University,
 } from '../domain/types';
+import type { ProgressRecord } from '../study/progress';
 import type { LectureExtract } from '../knowledge/types';
 import type { Store } from './store';
 
@@ -28,6 +29,8 @@ export interface Snapshot {
   versions: ArtefactVersion[];
   extracts: Record<string, LectureExtract[]>;
   studyAids: StudyAid[];
+  progress: ProgressRecord[];
+  attempts: QuizAttempt[];
   conversations: TutorConversation[];
   messages: TutorMessage[];
 }
@@ -145,6 +148,26 @@ export function createMemoryStore(initial: Snapshot): Store {
       void personId;
       return clone(db.studyAids.filter((a) => a.courseId === courseId));
     },
+    async progress(courseId, personId) {
+      return clone(db.progress.filter((r) => r.courseId === courseId
+        && (!personId || r.personId === personId)));
+    },
+    async recordProgress(record) {
+      db.progress.push(record);
+      save();
+      return clone(record);
+    },
+    async attempts(studyAidId, personId) {
+      return clone(db.attempts.filter((a) => a.studyAidId === studyAidId
+        && (!personId || a.personId === personId)));
+    },
+    async saveAttempt(attempt) {
+      db.attempts.push(attempt);
+      save();
+      return clone(attempt);
+    },
+
+    async studyAidById(id) { return clone(db.studyAids.find((a) => a.id === id) ?? null); },
     async saveStudyAid(aid) {
       const at = db.studyAids.findIndex((a) => a.id === aid.id);
       if (at >= 0) db.studyAids[at] = aid; else db.studyAids.push(aid);

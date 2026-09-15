@@ -32,14 +32,15 @@ Three kinds of entry:
 | **Job queue** | Stubbed — in-process, single worker, three retries | Survives neither a restart nor a second instance. No broker, no dead-letter handling, no back-pressure. |
 | **Notifications** | **Not built** | "Notification" is the last box of the specification's job diagram. Nothing tells a lecturer their lecture finished processing. |
 
-## 2. The student's learning objects are documents, not activities
+## 2. The student's learning objects
 
 | | State |
 |---|---|
-| **Taking a quiz** | **Not built.** A quiz is generated as text with an answers section. Nothing renders questions one at a time, accepts an answer, scores it, or records that it was taken. |
-| **Flashcards as cards** | **Not built.** Generated as text; no card interface, no spaced repetition, no "I knew this one". |
-| **Progress tracking** | **Not built.** Nothing records that a student read the notes, listened to the lesson, or finished a lecture. |
-| **"Today's Learning" panel** | Partial. The dashboard lists courses and lectures; the specification's per-lecture `📖 Read · 🎧 Listen · 🧠 Revision · ❓ Quiz · 🤖 Ask` strip is not there. |
+| **Taking a quiz** | **Built.** `study/quiz.ts` parses the generated text into questions, holds the answers back, marks multiple choice and refuses to machine-mark a written answer; `QuizRunner` asks them and records the attempt. |
+| **Flashcards as cards** | **Built.** `study/flashcards.ts` reads both generated shapes; `FlashcardDeck` shows one side at a time. No spaced repetition — "I knew it" is not yet remembered between sessions. |
+| **Progress tracking** | **Built.** Read, listened, revised and quiz-taken, deduplicated per day, with a student's own record and a cohort shape that reduces `personId` to a set size so a lecturer cannot learn who. |
+| **"Today's Learning" panel** | **Built** — the per-lecture `📖 Read · 🎧 Listen · 🧠 Revision · ❓ Quiz · 🤖 Ask` strip, with ticks against what is done. |
+| **Spaced repetition** | **Not built.** Flashcard confidence is per session. |
 | **Certificates** | **Not built.** Named in the business list. No completion model, no issuance, no verification. |
 
 ## 3. Lecturer features named in the specification and absent

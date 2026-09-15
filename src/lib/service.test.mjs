@@ -172,4 +172,44 @@ t.section('The approved master is immutable in substance');
     (await store.versions(again.id)).some((v) => v.note.includes('the approval was cleared by it')), true);
 }
 
+t.section('Studying, and what a lecturer may learn from it');
+{
+  const store = fresh();
+  // A quiz the whole French cohort would share, sat by one of them.
+  const quiz = await S.makeStudyAid(store, e, student, 'course-biol101',
+    { kind: 'test', lectures: [6], questions: 10 });
+
+  await S.recordStudy(store, student, {
+    courseId: 'course-biol101', lectureId: 'lecture-06',
+    artefactKind: 'structured_notes', event: 'read',
+  });
+  // TWICE IN A DAY IS ONCE. A page somebody keeps coming back to is one
+  // reader, and counting events would tell a lecturer their cohort doubled.
+  await S.recordStudy(store, student, {
+    courseId: 'course-biol101', lectureId: 'lecture-06',
+    artefactKind: 'structured_notes', event: 'read',
+  });
+
+  const mine = await S.myProgressOn(store, student, 'course-biol101');
+  const six = mine.find((p) => p.lectureId === 'lecture-06');
+  t.check('the student’s own record says they read it', six.read, true);
+  t.check('…and that nothing else is done yet', [six.listened, six.quizTaken], [false, false]);
+
+  const cohort = await S.cohortOn(store, lecturer, 'course-biol101');
+  const row = cohort.rows.find((r) => r.lectureId === 'lecture-06');
+  t.check('the lecturer sees one reader, not two', row.readers, 1);
+  t.check('…out of a cohort of one', cohort.cohortSize, 1);
+  t.check('…and no name anywhere in it', JSON.stringify(cohort).includes('person-student'), false);
+
+  await t.refuses('a student cannot read the cohort’s shape',
+    () => S.cohortOn(store, student, 'course-biol101'));
+
+  // And sitting the quiz records the attempt and the progress together.
+  const sat = await S.sitQuiz(store, student, quiz.id, { 1: 'B' });
+  t.check('the attempt is kept', sat.attempt.personId, 'person-student');
+  t.check('…and the lecture shows a quiz taken',
+    (await S.myProgressOn(store, student, 'course-biol101'))
+      .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
+}
+
 t.done();

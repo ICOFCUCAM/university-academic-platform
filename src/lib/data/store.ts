@@ -18,9 +18,10 @@
 
 import type {
   Artefact, ArtefactVersion, Course, Department, Enrolment, Faculty, Lecture,
-  Person, StudyAid, TutorConversation, TutorMessage, University,
+  Person, QuizAttempt, StudyAid, TutorConversation, TutorMessage, University,
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
+import type { ProgressRecord } from '../study/progress';
 
 export interface Store {
   /** Which implementation this is, shown in Settings. */
@@ -64,6 +65,14 @@ export interface Store {
 
   studyAids(courseId: string, personId?: string): Promise<StudyAid[]>;
   saveStudyAid(aid: StudyAid): Promise<StudyAid>;
+  studyAidById(id: string): Promise<StudyAid | null>;
+
+  /** What a person has read, listened to and sat. See study/progress.ts. */
+  progress(courseId: string, personId?: string): Promise<ProgressRecord[]>;
+  recordProgress(record: ProgressRecord): Promise<ProgressRecord>;
+
+  attempts(studyAidId: string, personId?: string): Promise<QuizAttempt[]>;
+  saveAttempt(attempt: QuizAttempt): Promise<QuizAttempt>;
 
   conversations(courseId: string, studentId: string): Promise<TutorConversation[]>;
   saveConversation(conversation: TutorConversation): Promise<TutorConversation>;
