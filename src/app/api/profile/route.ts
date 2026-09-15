@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import {
-  authoriseOwnVoice, Refused, revokeOwnVoice, setListeningPreference, setWorkingLanguage,
+  authoriseOwnVoice, Refused, revokeOwnVoice, setAccessibility, setListeningPreference,
+  setWorkingLanguage,
 } from '@/lib/service';
 
 export async function POST(request: Request) {
@@ -16,6 +17,12 @@ export async function POST(request: Request) {
       case 'listening':
         return NextResponse.json({
           person: await setListeningPreference(store, actor, { voice: body.voice, speed: body.speed }),
+        });
+
+      // Also the person's own, and nobody else's to set or to read.
+      case 'accessibility':
+        return NextResponse.json({
+          person: await setAccessibility(store, actor, body.settings ?? {}),
         });
 
       // The registry's, with a reason recorded.

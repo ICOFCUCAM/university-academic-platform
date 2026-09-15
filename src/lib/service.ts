@@ -43,6 +43,7 @@ import {
   assess, attestation, verificationCode, type Certificate, type Evidence,
 } from './credential/certificate';
 import { mark, parseQuiz } from './study/quiz';
+import { settingsOf, type AccessibilitySettings } from './access/accessibility';
 import { parseFlashcards } from './study/flashcards';
 import { cardKey, holding, schedule, session, type Recall } from './study/repetition';
 import type { Engine } from './ai/provider';
@@ -1365,6 +1366,27 @@ export async function setListeningPreference(
     voicePreference: preference.voice ?? person.voicePreference,
     audioSpeed: preference.speed ?? person.audioSpeed,
   });
+}
+
+/**
+ * HOW THE PAGE IS PRESENTED TO ONE PERSON — and only ever to themself.
+ *
+ * There is deliberately no `personId` parameter. A registrar may change a
+ * student's working language, with a reason recorded, because a term studied
+ * in two languages is an academic problem. Nobody may change somebody else's
+ * typeface, and nobody may read it either: these settings are a disclosure a
+ * student made to a stylesheet, not to their university.
+ */
+export async function setAccessibility(
+  store: Store, actor: Actor, settings: Partial<AccessibilitySettings>,
+): Promise<Person> {
+  const person = await store.person(actor.id);
+  if (!person) throw new Refused('No such person.');
+
+  // Unknown keys and unknown values are dropped rather than stored: a page
+  // posting `contrast: 'neon'` must not be able to write it into a profile.
+  const merged = settingsOf({ ...person.accessibility, ...settings });
+  return store.savePerson({ ...person, accessibility: merged });
 }
 
 /**

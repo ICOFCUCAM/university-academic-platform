@@ -212,6 +212,30 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('How a page is presented, and who may say so');
+{
+  const store = fresh();
+
+  const changed = await S.setAccessibility(store, student, { textSize: 'larger', contrast: 'high' });
+  t.check('a student sets their own', changed.accessibility.textSize, 'larger');
+  t.check('…and the rest keeps its default', changed.accessibility.typeface, 'standard');
+
+  // A PAGE MAY NOT WRITE WHAT NO SCREEN OFFERS. These land in an attribute a
+  // stylesheet reads, so an unknown value is dropped rather than stored.
+  const nonsense = await S.setAccessibility(store, student, { contrast: 'neon' });
+  t.check('a value nobody offered does not get stored', nonsense.accessibility.contrast, 'standard');
+  t.check('…and the setting beside it survives', nonsense.accessibility.textSize, 'larger');
+
+  // AND THERE IS NO WAY TO SET SOMEBODY ELSE'S. Not a refusal to write a test
+  // around — no parameter exists, so the registry changing a student's
+  // typeface is not a thing the service can express.
+  await S.setAccessibility(store, registry, { personId: 'person-student', contrast: 'high' });
+  t.check('the registry setting “a student’s” changes only their own',
+    (await store.person('person-student')).accessibility.contrast, 'standard');
+  t.check('…and it landed on the registrar instead',
+    (await store.person('person-registry')).accessibility.contrast, 'high');
+}
+
 t.section('A deck that remembers what you could not recall');
 {
   const store = fresh();

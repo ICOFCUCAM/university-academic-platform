@@ -6,6 +6,7 @@ import { STAGES } from '@/lib/pipeline/stages';
 import { mayAct } from '@/lib/domain/ownership';
 import { can } from '@/lib/capabilities';
 import { voicesFor } from '@/lib/voice/voices';
+import { settingsOf } from '@/lib/access/accessibility';
 import { LectureWorkspace } from '@/components/LectureWorkspace';
 import { LectureCompanion } from '@/components/LectureCompanion';
 import { Empty, PageHeader } from '@/components/ui';
@@ -22,6 +23,7 @@ export default async function LecturePage({ params }: { params: { id: string } }
   if (!course) notFound();
   const enrolment = await store.enrolmentFor(course.id, actor.id);
   const scene = { course, enrolment, personal: lecture.context === 'personal' };
+  const me = await store.person(actor.id);
 
   const all = await store.artefacts(lecture.id);
   // ONE RULE, ASKED PER ARTEFACT. The page does not decide what a student may
@@ -93,6 +95,7 @@ export default async function LecturePage({ params }: { params: { id: string } }
         voices={voices}
         voicePreference={actor.voicePreference}
         audioSpeed={actor.audioSpeed}
+        captions={settingsOf(me?.accessibility).captions}
       />
 
       {/* THE LECTURE COMPANION. "Ask about this lecture" means this lecture —

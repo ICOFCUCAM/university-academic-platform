@@ -2,16 +2,124 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+
+  --ink: 18 22 31;
+  --ink-soft: 75 85 101;
+  --ink-faint: 139 148 166;
+  --page: 246 247 249;
+  --page-card: 255 255 255;
+  --page-line: 227 230 236;
+  --brand: 31 77 122;
+  --brand-dark: 22 58 92;
+  --brand-tint: 234 241 248;
+  --ok: 31 122 77;
+  --warn: 154 107 18;
+  --bad: 163 50 50;
+
+  --face: ui-sans-serif;
+  --prose: 15px;
+}
 
 body {
   @apply bg-page text-ink antialiased;
+  font-family: var(--face), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   WHAT A STUDENT CHOSE IN THEIR PROFILE.
+
+   These attributes are on <body> from the server, so the first paint is
+   already right: nobody should watch a page load in the typeface they cannot
+   read and then correct itself. Every rule here changes presentation and
+   nothing else — no rule hides a word, reorders a page, or touches an
+   artefact.
+   --------------------------------------------------------------------------- */
+
+/* Text size raises the prose most, because that is what is read for twenty
+   minutes at a time — but it also lifts the interface's small type off its
+   floor. Screenshotting this caught the first attempt doing nothing visible
+   on a settings screen, which teaches a student that the setting is broken.
+   The chrome is lifted rather than scaled, so the layout still holds. */
+body[data-text='large']  { --prose: 17px; --small: 13px; --smaller: 12px; --regular: 15px; }
+body[data-text='larger'] { --prose: 19px; --small: 14px; --smaller: 13px; --regular: 16px; }
+
+body[data-text='large'] [class*='text-xs'],
+body[data-text='larger'] [class*='text-xs'] { font-size: var(--small); }
+body[data-text='large'] [class*='text-[10px]'],
+body[data-text='large'] [class*='text-[11px]'],
+body[data-text='larger'] [class*='text-[10px]'],
+body[data-text='larger'] [class*='text-[11px]'] { font-size: var(--smaller); }
+body[data-text='large'] [class*='text-sm'],
+body[data-text='larger'] [class*='text-sm'] { font-size: var(--regular); }
+
+/* A heavier, wider-spaced face with letterforms that do not mirror. No web
+   font is fetched: a stylesheet that needs the network to be readable fails
+   exactly when the connection is poor. */
+body[data-typeface='dyslexia-friendly'] {
+  --face: 'Atkinson Hyperlegible', 'Verdana', 'Tahoma', sans-serif;
+  letter-spacing: 0.012em;
+  word-spacing: 0.08em;
+}
+body[data-typeface='dyslexia-friendly'] .prose-academic { line-height: 1.9; }
+body[data-typeface='dyslexia-friendly'] .prose-academic p { max-width: 62ch; }
+
+/* HIGH CONTRAST IS A PALETTE. Six variables, and the tint behind panels goes
+   white so that a page is black on white rather than dark blue on pale blue. */
+body[data-contrast='high'] {
+  --ink: 0 0 0;
+  --ink-soft: 26 26 26;
+  --ink-faint: 61 61 61;
+  --page: 255 255 255;
+  --page-card: 255 255 255;
+  --page-line: 0 0 0;
+  --brand: 0 45 90;
+  --brand-dark: 0 30 60;
+  --brand-tint: 255 255 255;
+  --ok: 0 92 46;
+  --warn: 106 66 0;
+  --bad: 140 0 0;
+}
+
+/* The status panels are tinted with Tailwind's own amber/emerald/red scales
+   rather than the palette above, so high contrast has to reach them by class:
+   the tint goes white and the border goes black, and the coloured text — which
+   is what carries the meaning — stays. */
+body[data-contrast='high'] [class*='bg-amber-50'],
+body[data-contrast='high'] [class*='bg-emerald-50'],
+body[data-contrast='high'] [class*='bg-red-50'] { background-color: #fff; }
+body[data-contrast='high'] [class*='border-amber-200'],
+body[data-contrast='high'] [class*='border-emerald-200'],
+body[data-contrast='high'] [class*='border-emerald-300'],
+body[data-contrast='high'] [class*='border-red-200'] { border-color: #000; }
+
+body[data-links='underlined'] a { text-decoration: underline; }
+
+/* Motion. The media query holds when the person has said "follow my system";
+   the attribute overrules it in either direction when they have chosen here. */
+@media (prefers-reduced-motion: reduce) {
+  body:not([data-motion='full']) *,
+  body:not([data-motion='full']) *::before,
+  body:not([data-motion='full']) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+body[data-motion='reduced'] *,
+body[data-motion='reduced'] *::before,
+body[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
 /* Generated academic prose is read for minutes at a time; it gets the
    measure and the leading of something meant to be read, not of a UI. */
 .prose-academic {
-  @apply text-[15px] leading-7 text-ink;
+  @apply leading-7 text-ink;
+  font-size: var(--prose);
 }
 .prose-academic h1 { @apply text-2xl font-semibold mt-8 mb-3; }
 .prose-academic h2 { @apply text-lg font-semibold mt-7 mb-2 text-ink; }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Download, Headphones } from 'lucide-react';
+import { Captions, Download, Headphones } from 'lucide-react';
+import { Markdown } from '@/components/Markdown';
 import { SPEEDS } from '@/lib/voice/voices';
 
 /**
@@ -16,12 +17,16 @@ import { SPEEDS } from '@/lib/voice/voices';
  * would tell a lecturer their cohort is studying when it is scrolling.
  */
 export function AudioLesson({
-  parts, speed, courseId, lectureId,
+  parts, speed, courseId, lectureId, script, captions,
 }: {
   parts: { label: string; src: string; seconds?: number }[];
   speed: number;
   courseId: string;
   lectureId: string;
+  /** The words that were spoken. Always available; how it is shown is a choice. */
+  script?: string;
+  /** From the listener's own profile: shown beside the audio, or behind a click. */
+  captions?: boolean;
 }) {
   const [at, setAt] = useState(0);
   const [rate, setRate] = useState(speed);
@@ -88,6 +93,26 @@ export function AudioLesson({
           </a>
         </div>
       </div>
+
+      {/* THE WORDS THAT WERE SPOKEN — always here, never hidden, and only the
+          disclosure differs. NOT A TIMED CAPTION TRACK: the speech services
+          return audio and a length, not word timings, so nothing highlights a
+          word as it is said and this does not pretend to. */}
+      {script && (captions ? (
+        <div className="mt-4 border-t border-page-line pt-4">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-ink-faint">
+            <Captions size={12} /> What is said — the whole script, not timed to the audio
+          </p>
+          <Markdown source={script} />
+        </div>
+      ) : (
+        <details className="mt-4 border-t border-page-line pt-4">
+          <summary className="cursor-pointer text-xs text-ink-soft">
+            Read what is said
+          </summary>
+          <div className="mt-3"><Markdown source={script} /></div>
+        </details>
+      ))}
     </section>
   );
 }

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Globe, Headphones, Lock, Mic, ShieldCheck } from 'lucide-react';
+import { Accessibility, Globe, Headphones, Lock, Mic, ShieldCheck } from 'lucide-react';
 import type { Person } from '@/lib/domain/types';
 import { LANGUAGE_BY_CODE } from '@/lib/i18n/languages';
 import { PLATFORM_VOICES, SPEEDS } from '@/lib/voice/voices';
+import { ACCESSIBILITY_CHOICES, settingsOf } from '@/lib/access/accessibility';
 import { Card } from '@/components/ui';
 
 /**
@@ -14,6 +15,7 @@ import { Card } from '@/components/ui';
  *   Working language   one, and not a switcher. Locked, with who set it.
  *   Voice              the student's, changeable whenever they like.
  *   Speed              the same.
+ *   Reading it         theirs alone, and reported to nobody.
  *
  * The two are different kinds of thing and the screen says so: one is the
  * academic environment, the other is how it sounds.
@@ -102,6 +104,51 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
             </button>
           ))}
         </div>
+      </Card>
+
+      <Card className="px-5 py-4 lg:col-span-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Accessibility size={16} className="text-brand" /> Reading and using this platform
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          These are yours. Nobody sets them for you, and no screen anywhere reports them to your
+          lecturers or to the registry. They change how a page is presented and never a word of
+          what it says.
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ACCESSIBILITY_CHOICES.map((choice) => {
+            const current = settingsOf(person.accessibility)[choice.key];
+            return (
+              <div key={choice.key}>
+                <p className="text-[11px] uppercase tracking-wide text-ink-faint">{choice.label}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {choice.options.map((option) => (
+                    <button
+                      key={String(option.value)} type="button" disabled={busy}
+                      onClick={() => save({ action: 'accessibility', settings: { [choice.key]: option.value } })}
+                      className={`rounded border px-2.5 py-1 text-xs ${
+                        current === option.value
+                          ? 'border-brand bg-brand text-white' : 'border-page-line text-ink-soft'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-ink-faint">{choice.blurb}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* SAYING WHAT THIS IS NOT. A caption that claims to be synchronised
+            and is not is worse than one that never claimed it. */}
+        <p className="mt-4 rounded border border-page-line bg-page px-3 py-2 text-xs text-ink-soft">
+          “Always shown” puts the spoken script beside the audio. It is not a timed caption track:
+          the speech services this platform talks to return audio and a length, not word timings,
+          so nothing here highlights a word as it is said.
+        </p>
       </Card>
 
       {!isStudent && (

@@ -174,6 +174,14 @@ export interface Person {
   audioSpeed?: number;
 
   /**
+   * HOW THE PAGE IS PRESENTED TO THEM. Theirs alone: nobody sets these for
+   * somebody else and no screen reports them to anybody — a lecturer reading
+   * "this student uses the dyslexia-friendly typeface" would be reading a
+   * disability that was disclosed to a stylesheet. See lib/access.
+   */
+  accessibility?: Partial<import('../access/accessibility').AccessibilitySettings>;
+
+  /**
    * A LECTURER'S AUTHORISATION FOR THEIR OWN VOICE. Absent means no, and no is
    * the default for everybody, forever, until they say otherwise themselves.
    */

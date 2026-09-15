@@ -26,7 +26,7 @@ interface Stage {
 export function LectureWorkspace({
   lecture, stages, artefacts: initial, canEdit, student,
   originalLanguage, offeredLanguages, canTranslate, canApproveTranslation,
-  workingLanguage, voices, voicePreference, audioSpeed,
+  workingLanguage, voices, voicePreference, audioSpeed, captions,
 }: {
   lecture: Lecture;
   stages: Stage[];
@@ -42,6 +42,7 @@ export function LectureWorkspace({
   voices: VoiceOfferView[];
   voicePreference?: string;
   audioSpeed?: number;
+  captions?: boolean;
 }) {
   const router = useRouter();
   const [artefacts, setArtefacts] = useState(initial);
@@ -686,6 +687,8 @@ export function LectureWorkspace({
                       courseId={lecture.courseId}
                       lectureId={lecture.id}
                       speed={audioSpeed ?? 1}
+                      script={shown.body ?? undefined}
+                      captions={captions}
                       parts={(shown.parts?.filter((p) => p.mediaPath) ?? [])
                         .map((p) => ({ label: p.label, src: `/api/media/${p.mediaPath}`, seconds: p.seconds }))
                         .concat(shown.mediaPath && !shown.parts?.length
