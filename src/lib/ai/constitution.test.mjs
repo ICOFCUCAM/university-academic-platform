@@ -7,13 +7,18 @@
 // ---------------------------------------------------------------------------
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { load, suite } from '../testkit.mjs';
 
 const C = await load('ai/constitution.ts');
 const T = await load('ai/terminology.ts');
 const t = suite('The AI Transformation Constitution');
-const lib = new URL('..', import.meta.url).pathname;
+// `fileURLToPath`, not `.pathname`: a URL percent-encodes, so a repository
+// checked out under a directory with a space in its name — which is exactly
+// how this is vendored into the University's own repository — turns into a
+// path with %20 in it, and every file this test opens is reported missing.
+const lib = dirname(fileURLToPath(new URL('.', import.meta.url)));
 
 t.section('Nine articles, in order of precedence');
 t.check('there are nine', C.CONSTITUTION.map((a) => a.n), [1, 2, 3, 4, 5, 6, 7, 8, 9]);

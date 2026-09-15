@@ -11,6 +11,7 @@
 
 import { readFileSync } from 'node:fs';
 import { load, suite } from '../testkit.mjs';
+import { fileURLToPath } from 'node:url';
 
 const { createMemoryStore } = await load('data/memory.ts');
 const { DEMO } = await load('data/seed.ts');
@@ -112,7 +113,7 @@ t.section('And the platform never suggests a mark');
 {
   // STRUCTURAL, NOT A PROMISE. `markWork` takes the mark from its caller and
   // makes no model call; if one ever appeared here, this check would fail.
-  const source = readFileSync(new URL('../service.ts', import.meta.url).pathname, 'utf8');
+  const source = readFileSync(fileURLToPath(new URL('../service.ts', import.meta.url)), 'utf8');
   const markWork = source.slice(source.indexOf('export async function markWork'));
   const body = markWork.slice(0, markWork.indexOf('\nexport '));
   t.check('no model is consulted when marking', /callAs\(|\.complete\(|runTransformation/.test(body), false);

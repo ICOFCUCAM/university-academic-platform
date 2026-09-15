@@ -12,6 +12,7 @@
     "test:suite": "node src/lib/suite.test.mjs",
     "check:rtl": "node scripts/rtl-audit.mjs",
     "check:built": "node scripts/built-audit.mjs",
+    "check:spaces": "node scripts/path-with-spaces.mjs",
     "test:capabilities": "node src/lib/capabilities.test.mjs",
     "test:ownership": "node src/lib/domain/ownership.test.mjs",
     "test:pipeline": "node src/lib/pipeline/stages.test.mjs",

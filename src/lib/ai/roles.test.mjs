@@ -15,6 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import { load, suite } from '../testkit.mjs';
+import { fileURLToPath } from 'node:url';
 
 const R = await load('ai/roles.ts');
 const C = await load('ai/contract.ts');
@@ -82,7 +83,7 @@ t.check('…while a course answer is not',
 t.section('Every model call in the platform names a role');
 const { readFileSync, readdirSync } = await import('node:fs');
 const { join } = await import('node:path');
-const here = new URL('.', import.meta.url).pathname;
+const here = fileURLToPath(new URL('.', import.meta.url));
 const roots = [join(here, '..'), join(here, '.'), join(here, '../../components')];
 const offenders = [];
 for (const root of roots) {
