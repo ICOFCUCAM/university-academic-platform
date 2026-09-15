@@ -33,6 +33,7 @@ export interface Store {
   readonly id: 'memory' | 'icof';
 
   university(): Promise<University>;
+  saveUniversity(university: University): Promise<University>;
   faculties(): Promise<Faculty[]>;
   departments(): Promise<Department[]>;
 

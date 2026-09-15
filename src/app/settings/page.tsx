@@ -4,6 +4,8 @@ import { currentActor } from '@/lib/session';
 import { PLANS } from '@/lib/billing/plans';
 import { STAGES } from '@/lib/pipeline/stages';
 import { capabilitiesOf, ROLE_LABEL } from '@/lib/capabilities';
+import { can } from '@/lib/capabilities';
+import { InstitutionVoice } from '@/components/InstitutionVoice';
 import { Card, PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +15,9 @@ export default async function Settings() {
   const store = getStore();
   const wired = engine().describe();
   const pending = await getQueue().pending();
+  const university = await store.university();
+  // Any course will do: the route is per-course, the act is the institution's.
+  const anyCourse = (await store.courses())[0];
 
   return (
     <div>
@@ -67,6 +72,10 @@ export default async function Settings() {
             {capabilitiesOf(actor.role).join(', ')}.
           </p>
         </Card>
+
+        {can(actor.role, 'manage-faculties') && anyCourse && (
+          <InstitutionVoice voice={university.standardVoice} courseId={anyCourse.id} />
+        )}
 
         <Card className="px-5 py-4 lg:col-span-2">
           <h2 className="text-sm font-semibold">The pipeline</h2>

@@ -60,6 +60,12 @@ export interface University {
   name: string;
   /** Shown on the masthead. No claim is made about the institution here. */
   shortName?: string;
+  /**
+   * The institution's own approved voice, where it has one — the registry's to
+   * set, because it speaks for the university rather than for a course. A
+   * lecturer's voice is never this: that is consent, and consent is personal.
+   */
+  standardVoice?: import('../voice/voices').Voice;
 }
 
 export interface Faculty {

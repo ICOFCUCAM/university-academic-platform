@@ -50,10 +50,12 @@ export default async function LecturePage({ params }: { params: { id: string } }
   // nobody authorised is never even sent to the browser as an option.
   const lecturer = await store.person(lecture.ownerId);
   const listeningLanguage = student ? actor.workingLanguage ?? course.originalLanguage ?? 'en' : course.originalLanguage ?? 'en';
+  const university = await store.university();
   const voices = voicesFor({
     lecturerName: lecturer?.name ?? 'The lecturer',
     lecturerConsent: lecturer?.voiceConsent,
     use: listeningLanguage === (course.originalLanguage ?? 'en') ? 'original-audio' : 'translated-audio',
+    universityVoice: university.standardVoice,
     allowed: course.allowedVoices,
   }).map((offer) => ({
     id: offer.voice.id,

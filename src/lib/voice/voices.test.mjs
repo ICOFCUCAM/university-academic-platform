@@ -100,6 +100,35 @@ t.section('A working language is changed by the registry, with a reason');
   t.check('…and where they came from', moved.workingLanguageHistory.at(-1).from, 'fr');
 }
 
+t.section('The institution’s own voice, where it has set one');
+{
+  // It is offered beside the platform's, above them, and it is never the
+  // lecturer's: a course or an institution cannot consent on a person's behalf.
+  const withUniversity = V.voicesFor({
+    lecturerName: 'Dr Amara Okonjo',
+    use: 'original-audio',
+    universityVoice: { id: 'icof-standard', kind: 'university', label: 'The university’s voice', blurb: 'Its own.' },
+  });
+  t.check('it is offered', withUniversity.some((o) => o.voice.id === 'icof-standard'), true);
+  t.check('…and it is available, unlike the lecturer’s unauthorised one',
+    withUniversity.find((o) => o.voice.id === 'icof-standard').available, true);
+  t.check('…and the lecturer’s is still refused',
+    withUniversity.find((o) => o.voice.id === 'lecturer').available, false);
+
+  // AND A COURSE'S ALLOWED LIST DOES NOT REMOVE IT. The list narrows the
+  // platform's voices; the institution's own is the institution's.
+  const narrowed = V.voicesFor({
+    lecturerName: 'Dr Amara Okonjo',
+    use: 'original-audio',
+    universityVoice: { id: 'icof-standard', kind: 'university', label: 'The university’s voice' },
+    allowed: ['platform-warm-f'],
+  });
+  t.check('a narrowed course still offers it',
+    narrowed.some((o) => o.voice.id === 'icof-standard'), true);
+  t.check('…and offers only the one platform voice beside it',
+    narrowed.filter((o) => o.voice.kind === 'platform').map((o) => o.voice.id), ['platform-warm-f']);
+}
+
 t.section('Voice and speed are the student’s own, and need no ceremony');
 {
   const store = fresh();

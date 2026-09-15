@@ -212,6 +212,65 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('Setting up a course: the lecturer’s half and the institution’s');
+{
+  const store = fresh();
+
+  const terms = await S.setCourseTerminology(store, lecturer, 'course-biol101',
+    [' Yahuah ', 'Yahusha HaMashiach', 'Yahuah', '']);
+  t.check('the terms are kept, trimmed, deduplicated and without the blank',
+    terms.terminology, ['Yahuah', 'Yahusha HaMashiach']);
+
+  await t.refuses('a registrar does not decide which terms may be substituted',
+    () => S.setCourseTerminology(store, registry, 'course-biol101', ['Lord']));
+  await t.refuses('nor does a student',
+    () => S.setCourseTerminology(store, student, 'course-biol101', []));
+
+  t.section('What completing it means');
+
+  const withRule = await S.setCompletionRule(store, lecturer, 'course-biol101',
+    { lecturesRead: 1.4, quizAverage: 300, quizzesTaken: 2 });
+  t.check('a proportion above one is a proportion of one', withRule.completion.lecturesRead, 1);
+  t.check('…and a percentage above a hundred is a hundred', withRule.completion.quizAverage, 100);
+  t.check('…and what was not asked for is not in the rule',
+    'assignmentsMarked' in withRule.completion, false);
+
+  // CERTIFYING NOTHING IS SAYING NOTHING, not a rule of zeroes — which would
+  // certify everybody who ever enrolled.
+  const without = await S.setCompletionRule(store, lecturer, 'course-biol101', null);
+  t.check('clearing it removes the rule rather than emptying it',
+    'completion' in without, false);
+
+  t.section('And the voice it is spoken in');
+
+  const voiced = await S.setCourseVoice(store, lecturer, 'course-biol101',
+    { defaultVoice: 'platform-warm-f', allowedVoices: ['platform-warm-f', 'not-a-voice'] });
+  t.check('a voice nobody offers is dropped from the allowed list',
+    voiced.allowedVoices, ['platform-warm-f']);
+  t.check('…and the default is kept', voiced.defaultVoice, 'platform-warm-f');
+
+  await t.refuses('a default outside what the course allows is refused',
+    () => S.setCourseVoice(store, lecturer, 'course-biol101', { defaultVoice: 'platform-academic-m' }));
+
+  // CONSENT IS NOT A COURSE SETTING. A lecturer authorises their own voice in
+  // their own profile; a course option that could turn it on would be a way
+  // around that, including on a course somebody else co-teaches.
+  await t.refuses('a course cannot switch on a lecturer’s own voice',
+    () => S.setCourseVoice(store, lecturer, 'course-biol101', { defaultVoice: 'lecturer' }));
+
+  t.section('The university’s own voice is the registry’s');
+
+  const uni = await S.setInstitutionVoice(store, registry,
+    { id: 'icof-standard', label: 'The university’s voice' });
+  t.check('the registry sets it', uni.standardVoice.id, 'icof-standard');
+  t.check('…and it is a university voice, not a person’s', uni.standardVoice.kind, 'university');
+
+  await t.refuses('a lecturer does not speak for the university',
+    () => S.setInstitutionVoice(store, lecturer, { id: 'mine', label: 'Mine' }));
+  await t.refuses('and a voice with no id is refused',
+    () => S.setInstitutionVoice(store, registry, { id: ' ', label: 'Nameless' }));
+}
+
 t.section('How a page is presented, and who may say so');
 {
   const store = fresh();

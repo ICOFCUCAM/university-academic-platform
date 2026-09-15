@@ -199,6 +199,15 @@ create index if not exists ls_progress_by_course on ls_progress (course_id);
 -- ONE ROW PER CARD PER STUDENT, rewritten in place. There is deliberately no
 -- history table behind this: the schedule is what the platform needs, and a
 -- log of every time somebody turned a card over at midnight is not.
+-- THIS PLATFORM'S OWN SETTINGS, kept apart from the host's tables. Mounted
+-- inside somebody else's university system, this platform reads their
+-- institution and never writes to it — so the university's standard voice,
+-- which is ours, lives here rather than in their row.
+create table if not exists ls_settings (
+  id             text primary key,
+  standard_voice jsonb
+);
+
 create table if not exists ls_recalls (
   id            uuid primary key default gen_random_uuid(),
   person_id     uuid not null references auth.users (id),
@@ -334,6 +343,10 @@ create table if not exists ls_profiles (
   audio_speed       numeric(3,2),
   plan              text,
   voice_consent     jsonb,
+  -- Text size, typeface, contrast, motion, captions. Read by nobody but its
+  -- owner: the policy below is the whole of who may see it, and there is no
+  -- aggregate, no view and no report over this column anywhere.
+  accessibility     jsonb,
   working_language_history jsonb not null default '[]'::jsonb
 );
 
@@ -349,6 +362,7 @@ alter table ls_study_aids          enable row level security;
 alter table ls_quiz_attempts       enable row level security;
 alter table ls_progress            enable row level security;
 alter table ls_recalls             enable row level security;
+alter table ls_settings            enable row level security;
 alter table ls_readings            enable row level security;
 alter table ls_assignments         enable row level security;
 alter table ls_submissions         enable row level security;
@@ -402,6 +416,14 @@ create policy ls_attempts_own on ls_quiz_attempts for all
 -- their own rows; a lecturer reads none of them and uses ls_cohort_shape.
 create policy ls_progress_own on ls_progress for all
   using (person_id = auth.uid()) with check (person_id = auth.uid());
+
+-- Everybody signed in reads the institution's settings — the voice a lesson is
+-- spoken in is not a secret. Nobody writes them through this policy: the
+-- registry writes with the service role, and the capability check in
+-- `service.setInstitutionVoice` is what stands in for a policy, because this
+-- schema has no role column of its own to test and inventing one would put a
+-- second, disagreeing answer next to the host's.
+create policy ls_settings_read on ls_settings for select using (auth.uid() is not null);
 
 -- AND A REVISION SCHEDULE IS NOBODY ELSE'S BUSINESS AT ALL. There is no
 -- aggregate over this table and no policy that lets a lecturer read one row of

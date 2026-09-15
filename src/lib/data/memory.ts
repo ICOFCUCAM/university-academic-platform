@@ -69,6 +69,7 @@ export function createMemoryStore(initial: Snapshot): Store {
     id: 'memory',
 
     async university() { return clone(db.university); },
+    async saveUniversity(university) { db.university = university; save(); return clone(university); },
     async faculties() { return clone(db.faculties); },
     async departments() { return clone(db.departments); },
 

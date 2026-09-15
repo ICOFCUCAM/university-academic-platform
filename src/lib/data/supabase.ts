@@ -25,6 +25,7 @@ import type {
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
+import type { Voice } from '../voice/voices';
 import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
@@ -88,7 +89,23 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
   return {
     id: 'icof',
 
-    async university() { return options.university; },
+    // THE HOST'S UNIVERSITY, PLUS WHAT IS THIS PLATFORM'S OWN. The name and
+    // the identity come from the deployment's configuration and are never
+    // written back — mounted inside somebody else's system, this platform does
+    // not edit their institution. The standard voice is ours, so it lives in
+    // our own settings row.
+    async university() {
+      const settings = (await one('ls_settings', 'university')) as { standardVoice?: Voice } | null;
+      return settings?.standardVoice
+        ? { ...options.university, standardVoice: settings.standardVoice }
+        : options.university;
+    },
+    async saveUniversity(university) {
+      await upsert('ls_settings', {
+        id: 'university', standardVoice: university.standardVoice ?? null,
+      } as unknown as Row);
+      return university;
+    },
 
     // ---- THE HOST'S OWN TABLES -----------------------------------------
     async faculties() {
@@ -168,6 +185,7 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         audioSpeed: profile?.audioSpeed as number | undefined,
         plan: profile?.plan as Person['plan'],
         voiceConsent: profile?.voiceConsent as Person['voiceConsent'],
+        accessibility: profile?.accessibility as Person['accessibility'],
         workingLanguageHistory: (profile?.workingLanguageHistory ?? []) as Person['workingLanguageHistory'],
       };
     },
@@ -181,6 +199,7 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         audioSpeed: person.audioSpeed,
         plan: person.plan,
         voiceConsent: person.voiceConsent,
+        accessibility: person.accessibility,
         workingLanguageHistory: person.workingLanguageHistory ?? [],
       });
       return person;

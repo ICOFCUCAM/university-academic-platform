@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText, Search } from 'lucide-react';
+import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText, Search, SlidersHorizontal } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
@@ -71,6 +71,14 @@ export default async function CoursePage({ params }: { params: { id: string } })
             >
               <Bot size={16} /> Course AI
             </Link>
+            {teaching && (
+              <Link
+                href={`/courses/${course.id}/settings`}
+                className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+              >
+                <SlidersHorizontal size={16} /> Set up
+              </Link>
+            )}
             {teaching && (
               <Link
                 href={`/courses/${course.id}/new-lecture`}

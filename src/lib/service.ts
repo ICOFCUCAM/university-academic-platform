@@ -17,7 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import type {
   Artefact, ArtefactKind, ArtefactVersion, Assignment, Course, Enrolment, Lecture,
-  Person, QuizAttempt, Reading, Register, StudyAid, Submission,
+  Person, QuizAttempt, Reading, Register, StudyAid, Submission, University,
 } from './domain/types';
 import { isEnrolled, mayAct, type Actor } from './domain/ownership';
 import { can } from './capabilities';
@@ -40,9 +40,11 @@ import { minutesUsedIn, period } from './billing/usage';
 import { WORDING, type NotificationKind } from './notify/notifications';
 import { createLimiter, type Limiter } from './limits';
 import {
-  assess, attestation, verificationCode, type Certificate, type Evidence,
+  assess, attestation, verificationCode,
+  type Certificate, type CompletionRule, type Evidence,
 } from './credential/certificate';
 import { mark, parseQuiz } from './study/quiz';
+import { PLATFORM_VOICES } from './voice/voices';
 import { settingsOf, type AccessibilitySettings } from './access/accessibility';
 import { parseFlashcards } from './study/flashcards';
 import { cardKey, holding, schedule, session, type Recall } from './study/repetition';
@@ -1799,6 +1801,132 @@ export async function costsOn(store: Store, actor: Actor, courseId: string) {
     throw new Refused('What a course costs to run is for the people who run it.');
   }
   return store.costs(courseId);
+}
+
+/** ---- What a course is set to, and who sets which part -------------------
+ *
+ * The division this platform rests on, applied to settings:
+ *
+ *   THE LECTURER'S, because it is the academic material — the terms that must
+ *   never be substituted, what completing the course means, and what the
+ *   course is spoken in.
+ *
+ *   THE INSTITUTION'S, because it is the environment — who may enrol, whether
+ *   the course is running, and the university's own standard voice.
+ *
+ * Neither reaches into the other. A registrar cannot decide that "Yahusha
+ * HaMashiach" may be normalised; a lecturer cannot open enrolment.
+ */
+
+async function courseIRun(store: Store, actor: Actor, courseId: string): Promise<Course> {
+  const where = await scene(store, courseId, actor.id);
+  if (!where.course.lecturerIds.includes(actor.id)) {
+    throw new Refused('A course is set up by the people who teach it.');
+  }
+  return where.course;
+}
+
+/**
+ * THE TERMS THAT ARE NEVER SUBSTITUTED. The lecturer's list, held mechanically
+ * by ai/terminology.ts rather than asked of a model — which is why this screen
+ * matters more than it looks: a term that is not on this list is a term the
+ * validator will not defend.
+ */
+export async function setCourseTerminology(
+  store: Store, actor: Actor, courseId: string, terms: string[],
+): Promise<Course> {
+  const course = await courseIRun(store, actor, courseId);
+  const cleaned = [...new Set(terms.map((t) => t.trim()).filter(Boolean))];
+  return store.saveCourse({ ...course, terminology: cleaned });
+}
+
+/**
+ * WHAT COMPLETING THIS COURSE MEANS. Absent, it stays absent: an empty rule
+ * certifies nothing (see credential/certificate.ts), and the way to say
+ * "no certificate" is to leave this alone rather than to write a rule of
+ * zeroes, which would certify everybody who enrolled.
+ */
+export async function setCompletionRule(
+  store: Store, actor: Actor, courseId: string, rule: CompletionRule | null,
+): Promise<Course> {
+  const course = await courseIRun(store, actor, courseId);
+  if (!rule) {
+    const { completion: _removed, ...without } = course;
+    return store.saveCourse(without);
+  }
+
+  const bounded = (value: number | undefined, max: number) =>
+    value === undefined ? undefined : Math.max(0, Math.min(max, value));
+  const cleaned: CompletionRule = {
+    lecturesRead: bounded(rule.lecturesRead, 1),
+    quizzesTaken: bounded(rule.quizzesTaken, 999),
+    quizAverage: bounded(rule.quizAverage, 100),
+    assignmentsMarked: bounded(rule.assignmentsMarked, 999),
+  };
+  for (const key of Object.keys(cleaned) as (keyof CompletionRule)[]) {
+    if (cleaned[key] === undefined) delete cleaned[key];
+  }
+  return store.saveCourse({ ...course, completion: cleaned });
+}
+
+/**
+ * WHAT THE COURSE IS SPOKEN IN. A default, and the voices allowed on it.
+ *
+ * A LECTURER CANNOT ALLOW THEIR OWN VOICE FROM HERE. Consent to be synthesised
+ * is given in their own profile, by them, and a course setting that could turn
+ * it on would be a way around that — including on a course somebody else
+ * co-teaches.
+ */
+export async function setCourseVoice(
+  store: Store, actor: Actor, courseId: string,
+  choice: { defaultVoice?: string | null; allowedVoices?: string[] },
+): Promise<Course> {
+  const course = await courseIRun(store, actor, courseId);
+
+  const permitted = new Set(PLATFORM_VOICES.map((v) => v.id));
+  const allowed = choice.allowedVoices
+    ? choice.allowedVoices.filter((id) => permitted.has(id))
+    : course.allowedVoices;
+
+  const wanted = choice.defaultVoice === undefined ? course.defaultVoice : choice.defaultVoice;
+  if (wanted === 'lecturer') {
+    throw new Refused('A voice is authorised by the person it belongs to, in their own profile — not by a course setting.');
+  }
+  if (wanted && !permitted.has(wanted)) throw new Refused('No such voice.');
+  if (wanted && allowed?.length && !allowed.includes(wanted)) {
+    throw new Refused('The default voice has to be one of the voices this course allows.');
+  }
+
+  const next = { ...course, allowedVoices: allowed };
+  if (wanted) next.defaultVoice = wanted; else delete next.defaultVoice;
+  return store.saveCourse(next);
+}
+
+/**
+ * THE INSTITUTION'S OWN VOICE — the registry's, not a lecturer's, because it
+ * speaks for the university rather than for a course.
+ */
+export async function setInstitutionVoice(
+  store: Store, actor: Actor, voice: { id: string; label: string; blurb?: string } | null,
+): Promise<University> {
+  if (!can(actor.role, 'manage-faculties')) {
+    throw new Refused('The university’s own voice is set by the registry.');
+  }
+  const university = await store.university();
+  if (!voice) {
+    const { standardVoice: _removed, ...without } = university;
+    return store.saveUniversity(without);
+  }
+  if (!voice.id.trim() || !voice.label.trim()) {
+    throw new Refused('A voice needs an id the speech service knows and a name a student will see.');
+  }
+  return store.saveUniversity({
+    ...university,
+    standardVoice: {
+      id: voice.id.trim(), kind: 'university',
+      label: voice.label.trim(), blurb: voice.blurb?.trim() || 'The university’s own voice.',
+    },
+  });
 }
 
 /**
