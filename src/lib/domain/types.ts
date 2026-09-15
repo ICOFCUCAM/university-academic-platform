@@ -469,6 +469,82 @@ export interface StudyAid {
  */
 export type Register = 'plain' | 'university';
 
+/** ---- Reading, set by the lecturer -------------------------------------- */
+
+/**
+ * A READING LIST IS NOT A TRANSFORMATION. Nothing is generated here and
+ * nothing is translated: it is what the lecturer tells the cohort to read,
+ * in the form they wrote it — a citation, a chapter, a link.
+ *
+ * It sits beside the lectures rather than inside the pipeline because it has
+ * no source artefact, no approval chain and no master: a reading is published
+ * or it is not.
+ */
+export interface Reading {
+  id: string;
+  courseId: string;
+  /** Attached to one lecture, or to the course as a whole. */
+  lectureId?: string;
+  kind: 'book' | 'chapter' | 'article' | 'link' | 'document';
+  /** The citation exactly as the lecturer gave it. Never reformatted. */
+  citation: string;
+  url?: string;
+  /** Why they set it, in their words. */
+  note?: string;
+  /** Essential, or worth reading if there is time. */
+  required: boolean;
+  addedBy: string;
+  addedAt: string;
+  published: boolean;
+}
+
+/** ---- Assignments, which a person marks --------------------------------- */
+
+/**
+ * WHAT THE PLATFORM DOES NOT DO HERE IS THE POINT.
+ *
+ * It does not mark. Not a draft mark, not a suggested mark, not a rubric score
+ * "for the lecturer to adjust" — because a mark is an academic judgement about
+ * a student, and this platform's whole constitution is that AI transforms
+ * material and does not adjudicate. A number a lecturer merely agreed to is a
+ * number a model gave, and the student would have no way of knowing.
+ *
+ * So: the lecturer sets the work, the student hands it in, the lecturer marks
+ * it with their own words and their own number, and the student sees both when
+ * it is returned.
+ */
+export interface Assignment {
+  id: string;
+  courseId: string;
+  lectureId?: string;
+  title: string;
+  /** The brief, as set. */
+  brief: string;
+  dueAt?: string;
+  marksOutOf?: number;
+  createdBy: string;
+  createdAt: string;
+  published: boolean;
+}
+
+export interface Submission {
+  id: string;
+  assignmentId: string;
+  courseId: string;
+  studentId: string;
+  body: string;
+  submittedAt: string;
+  late: boolean;
+  /** Set only by a person, and only ever by a person. */
+  mark?: number;
+  feedback?: string;
+  markedBy?: string;
+  markedByName?: string;
+  markedAt?: string;
+  /** Marks exist before they are released; returning is a separate act. */
+  returnedAt?: string;
+}
+
 /** ---- Sitting a quiz --------------------------------------------------- */
 
 /**

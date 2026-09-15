@@ -32,6 +32,11 @@ const MAY = [
   // THEIR OWN VOICE, AND NOBODY ELSE'S DECISION. A voice is a person; consent
   // to synthesise one is not an institutional decision about an employee.
   ['authorise the use of their own voice', 'authorise-own-voice'],
+  ['set the reading', 'set-reading'],
+  ['set an assignment', 'set-assignment'],
+  // A MARK IS A PERSON'S ACT. There is no capability a machine can hold and
+  // no screen that suggests a number.
+  ['mark an assignment themselves', 'mark-assignment'],
 ];
 const MAY_NOT = [
   // A lecturer who does not read Arabic cannot approve the Arabic, and a
@@ -79,8 +84,11 @@ t.check('may not administer accounts', C.can('coordinator', 'manage-people'), fa
 t.section('An assistant prepares');
 t.check('may upload', C.can('assistant', 'upload-source-material'), true);
 t.check('may run the engine', C.can('assistant', 'run-transformation'), true);
+t.check('may keep the reading list', C.can('assistant', 'set-reading'), true);
 t.check('may not approve', C.can('assistant', 'approve-artefact'), false);
 t.check('may not publish', C.can('assistant', 'publish-to-students'), false);
+t.check('may not set work', C.can('assistant', 'set-assignment'), false);
+t.check('may not mark it', C.can('assistant', 'mark-assignment'), false);
 
 t.section('A translation reviewer vouches for one language, and authors nothing');
 t.check('may approve a translation', C.can('translation-reviewer', 'approve-translation'), true);
@@ -93,14 +101,16 @@ t.check('may NOT ask for more translations', C.can('translation-reviewer', 'requ
 t.section('A student consumes and interacts — and uploads nothing');
 t.check('may study what was published', C.can('student', 'study-published-material'), true);
 t.check('may ask the Course AI', C.can('student', 'ask-course-ai'), true);
+t.check('may hand work in', C.can('student', 'submit-assignment'), true);
 t.check('may not upload a lecture to a course', C.can('student', 'upload-source-material'), false);
+t.check('may not mark anything', C.can('student', 'mark-assignment'), false);
 // THE WORKING LANGUAGE IS NOT A SWITCH IN THE CORNER OF A COURSE. A student
 // hopping between languages mid-term revises from four half-remembered
 // versions of one lecture.
 t.check('may not change their own working language', C.can('student', 'set-working-language'), false);
 t.check('may not run a transformation on one', C.can('student', 'run-transformation'), false);
 t.check('may not publish anything', C.can('student', 'publish-to-students'), false);
-t.check('…and holds three capabilities, no more', C.capabilitiesOf('student').length, 3);
+t.check('…and holds four capabilities, no more', C.capabilitiesOf('student').length, 4);
 
 t.section('Every refusal can be explained to the person it refused');
 for (const capability of ['correct-derived-text', 'approve-artefact', 'publish-to-students', 'manage-courses', 'manage-enrolment', 'assign-lecturers']) {

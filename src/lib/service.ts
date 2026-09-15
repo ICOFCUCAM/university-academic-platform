@@ -16,10 +16,10 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
-  Artefact, ArtefactKind, ArtefactVersion, Course, Enrolment, Lecture, Person,
-  QuizAttempt, Register, StudyAid,
+  Artefact, ArtefactKind, ArtefactVersion, Assignment, Course, Enrolment, Lecture,
+  Person, QuizAttempt, Reading, Register, StudyAid, Submission,
 } from './domain/types';
-import { mayAct, type Actor } from './domain/ownership';
+import { isEnrolled, mayAct, type Actor } from './domain/ownership';
 import { can } from './capabilities';
 import { buildKnowledgeBase, emptyKnowledgeBase } from './knowledge/build';
 import type { CourseKnowledgeBase } from './knowledge/types';
@@ -1305,4 +1305,175 @@ export async function sitQuiz(
   }
 
   return { attempt, marked };
+}
+
+/** ---- Reading, and work that a person marks ----------------------------- */
+
+export async function setReading(
+  store: Store, actor: Actor, courseId: string,
+  input: { id?: string; lectureId?: string; kind: Reading['kind']; citation: string; url?: string; note?: string; required?: boolean; published?: boolean },
+): Promise<Reading> {
+  const where = await scene(store, courseId, actor.id);
+  const onCourse = where.course.lecturerIds.includes(actor.id);
+  if (!onCourse || !can(actor.role, 'set-reading')) {
+    throw new Refused('The reading is set by the people who teach the course.');
+  }
+  if (!input.citation.trim()) throw new Refused('A reading needs a citation.');
+
+  const existing = input.id ? (await store.readings(courseId)).find((r) => r.id === input.id) : undefined;
+  return store.saveReading({
+    id: existing?.id ?? randomUUID(),
+    courseId,
+    lectureId: input.lectureId,
+    kind: input.kind,
+    // THE CITATION AS THEY WROTE IT. Not reformatted into a house style, not
+    // "corrected" into another referencing convention: a lecturer's reading
+    // list is theirs, and the platform has no view about APA.
+    citation: input.citation.trim(),
+    url: input.url?.trim() || undefined,
+    note: input.note?.trim() || undefined,
+    required: input.required ?? true,
+    addedBy: existing?.addedBy ?? actor.id,
+    addedAt: existing?.addedAt ?? now(),
+    published: input.published ?? existing?.published ?? false,
+  });
+}
+
+export async function readingFor(store: Store, actor: Actor, courseId: string): Promise<Reading[]> {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  const readings = await store.readings(courseId);
+  // A student sees what was published, as with everything else here.
+  return teaching ? readings : readings.filter((r) => r.published);
+}
+
+export async function setAssignment(
+  store: Store, actor: Actor, courseId: string,
+  input: { id?: string; lectureId?: string; title: string; brief: string; dueAt?: string; marksOutOf?: number; published?: boolean },
+): Promise<Assignment> {
+  const where = await scene(store, courseId, actor.id);
+  if (!where.course.lecturerIds.includes(actor.id) || !can(actor.role, 'set-assignment')) {
+    throw new Refused('Work is set by the people who teach the course.');
+  }
+  if (!input.title.trim() || !input.brief.trim()) throw new Refused('An assignment needs a title and a brief.');
+
+  const existing = input.id ? await store.assignment(input.id) : null;
+  return store.saveAssignment({
+    id: existing?.id ?? randomUUID(),
+    courseId,
+    lectureId: input.lectureId,
+    title: input.title.trim(),
+    brief: input.brief.trim(),
+    dueAt: input.dueAt,
+    marksOutOf: input.marksOutOf,
+    createdBy: existing?.createdBy ?? actor.id,
+    createdAt: existing?.createdAt ?? now(),
+    published: input.published ?? existing?.published ?? false,
+  });
+}
+
+export async function submitWork(
+  store: Store, actor: Actor, assignmentId: string, body: string,
+): Promise<Submission> {
+  const assignment = await store.assignment(assignmentId);
+  if (!assignment) throw new Refused('No such assignment.');
+  if (!assignment.published) throw new Refused('That assignment has not been set yet.');
+
+  const where = await scene(store, assignment.courseId, actor.id);
+  if (!can(actor.role, 'submit-assignment')) throw new Refused('Only a student hands work in.');
+  if (!isEnrolled(where.enrolment)) throw new Refused('This course is not one of yours.');
+  if (!body.trim()) throw new Refused('There is nothing here to hand in.');
+
+  const mine = (await store.submissions(assignmentId, actor.id))[0];
+  // MARKED WORK IS NOT OVERWRITTEN. A student who edits after a mark would
+  // leave a mark attached to something the lecturer never read.
+  if (mine?.markedAt) throw new Refused('This has been marked. Ask your lecturer before changing it.');
+
+  return store.saveSubmission({
+    id: mine?.id ?? randomUUID(),
+    assignmentId,
+    courseId: assignment.courseId,
+    studentId: actor.id,
+    body: body.trim(),
+    submittedAt: now(),
+    late: !!assignment.dueAt && now() > assignment.dueAt,
+  });
+}
+
+/**
+ * MARKING IS A PERSON'S ACT, and the signature says so: it takes a mark and
+ * words from a human caller. There is no model call in this function, no
+ * suggested grade, and no rubric score "for the lecturer to adjust" — because a
+ * number a lecturer merely agreed to is a number a model gave, and the student
+ * would have no way of knowing which it was.
+ */
+export async function markWork(
+  store: Store, actor: Actor, submissionId: string,
+  marking: { mark?: number; feedback: string; release?: boolean },
+): Promise<Submission> {
+  const submission = await store.submissionById(submissionId);
+  if (!submission) throw new Refused('No such submission.');
+
+  const where = await scene(store, submission.courseId, actor.id);
+  if (!where.course.lecturerIds.includes(actor.id) || !can(actor.role, 'mark-assignment')) {
+    throw new Refused('A mark is an academic judgement about a student. It is the lecturer’s.');
+  }
+  if (!marking.feedback.trim()) {
+    // A MARK WITH NO WORDS is a number a student cannot learn anything from.
+    throw new Refused('Say something. A mark with no words teaches nobody anything.');
+  }
+
+  const person = await store.person(actor.id);
+  return store.saveSubmission({
+    ...submission,
+    mark: marking.mark,
+    feedback: marking.feedback.trim(),
+    markedBy: actor.id,
+    markedByName: person?.name,
+    markedAt: now(),
+    // Marked and returned are two acts: a lecturer marks a set over an
+    // evening and releases them together, so nobody reads theirs early and
+    // compares it with a friend who has not been marked yet.
+    returnedAt: marking.release ? now() : submission.returnedAt,
+  });
+}
+
+export async function returnWork(
+  store: Store, actor: Actor, assignmentId: string,
+): Promise<number> {
+  const assignment = await store.assignment(assignmentId);
+  if (!assignment) throw new Refused('No such assignment.');
+  const where = await scene(store, assignment.courseId, actor.id);
+  if (!where.course.lecturerIds.includes(actor.id) || !can(actor.role, 'mark-assignment')) {
+    throw new Refused('A mark is released by the lecturer who gave it.');
+  }
+
+  const submissions = await store.submissions(assignmentId);
+  let released = 0;
+  for (const submission of submissions) {
+    if (!submission.markedAt || submission.returnedAt) continue;
+    await store.saveSubmission({ ...submission, returnedAt: now() });
+    released += 1;
+  }
+  return released;
+}
+
+/** What a student may see of their own work, and what a lecturer sees of all. */
+export async function workFor(
+  store: Store, actor: Actor, assignmentId: string,
+): Promise<Submission[]> {
+  const assignment = await store.assignment(assignmentId);
+  if (!assignment) throw new Refused('No such assignment.');
+  const where = await scene(store, assignment.courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+
+  if (teaching) return store.submissions(assignmentId);
+
+  const mine = await store.submissions(assignmentId, actor.id);
+  // A MARK EXISTS BEFORE IT IS RELEASED. Until it is returned the student sees
+  // their own submission and nothing about the marking.
+  return mine.map((submission) => submission.returnedAt ? submission : {
+    ...submission, mark: undefined, feedback: undefined,
+    markedBy: undefined, markedByName: undefined, markedAt: undefined,
+  });
 }

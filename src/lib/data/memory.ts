@@ -10,8 +10,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
-  Artefact, ArtefactVersion, Course, Department, Enrolment, Faculty, Lecture,
-  Person, QuizAttempt, StudyAid, TutorConversation, TutorMessage, University,
+  Artefact, ArtefactVersion, Assignment, Course, Department, Enrolment, Faculty,
+  Lecture, Person, QuizAttempt, Reading, StudyAid, Submission, TutorConversation,
+  TutorMessage, University,
 } from '../domain/types';
 import type { ProgressRecord } from '../study/progress';
 import type { LectureExtract } from '../knowledge/types';
@@ -31,6 +32,9 @@ export interface Snapshot {
   studyAids: StudyAid[];
   progress: ProgressRecord[];
   attempts: QuizAttempt[];
+  readings: Reading[];
+  assignments: Assignment[];
+  submissions: Submission[];
   conversations: TutorConversation[];
   messages: TutorMessage[];
 }
@@ -165,6 +169,34 @@ export function createMemoryStore(initial: Snapshot): Store {
       db.attempts.push(attempt);
       save();
       return clone(attempt);
+    },
+
+    async readings(courseId) { return clone(db.readings.filter((r) => r.courseId === courseId)); },
+    async saveReading(reading) {
+      const at = db.readings.findIndex((r) => r.id === reading.id);
+      if (at >= 0) db.readings[at] = reading; else db.readings.push(reading);
+      save();
+      return clone(reading);
+    },
+
+    async assignments(courseId) { return clone(db.assignments.filter((a) => a.courseId === courseId)); },
+    async assignment(id) { return clone(db.assignments.find((a) => a.id === id) ?? null); },
+    async saveAssignment(assignment) {
+      const at = db.assignments.findIndex((a) => a.id === assignment.id);
+      if (at >= 0) db.assignments[at] = assignment; else db.assignments.push(assignment);
+      save();
+      return clone(assignment);
+    },
+    async submissions(assignmentId, studentId) {
+      return clone(db.submissions.filter((sub) => sub.assignmentId === assignmentId
+        && (!studentId || sub.studentId === studentId)));
+    },
+    async submissionById(id) { return clone(db.submissions.find((sub) => sub.id === id) ?? null); },
+    async saveSubmission(submission) {
+      const at = db.submissions.findIndex((sub) => sub.id === submission.id);
+      if (at >= 0) db.submissions[at] = submission; else db.submissions.push(submission);
+      save();
+      return clone(submission);
     },
 
     async studyAidById(id) { return clone(db.studyAids.find((a) => a.id === id) ?? null); },

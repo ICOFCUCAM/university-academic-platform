@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Bot, FileText, Headphones, Plus, ScrollText } from 'lucide-react';
+import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
@@ -47,6 +47,18 @@ export default async function CoursePage({ params }: { params: { id: string } })
         subtitle={course.description}
         actions={(
           <>
+            <Link
+              href={`/courses/${course.id}/work`}
+              className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+            >
+              <BookMarked size={16} /> Reading and work
+            </Link>
+            <Link
+              href={`/courses/${course.id}/study`}
+              className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+            >
+              <ListChecks size={16} /> Revision
+            </Link>
             <Link
               href={`/courses/${course.id}/ai`}
               className="inline-flex items-center gap-2 rounded-md border border-brand/30 bg-brand-tint px-3.5 py-2 text-sm font-medium text-brand-dark hover:bg-brand/10"

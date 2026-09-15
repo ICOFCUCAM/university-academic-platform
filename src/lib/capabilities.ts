@@ -46,6 +46,15 @@ export const CAPABILITIES = [
   'request-translation',
   'approve-translation',
 
+  // ---- What the lecturer sets around the material ------------------------
+  'set-reading',
+  'set-assignment',
+  // MARKING IS A PERSON'S ACT. There is no capability for a machine to hold,
+  // and no screen offers a suggested mark: a mark a lecturer merely agreed to
+  // is a mark a model gave, and the student could not tell.
+  'mark-assignment',
+  'submit-assignment',
+
   // ---- Teaching around the material --------------------------------------
   'view-own-courses',
   'view-registered-students',
@@ -105,6 +114,8 @@ export const LECTURER_CAPABILITIES: Capability[] = [
   'request-translation',
   // Their own voice, and nobody else's decision.
   'authorise-own-voice',
+  // What they set around the lecture, and the marking of it.
+  'set-reading', 'set-assignment', 'mark-assignment',
 ];
 
 const MATRIX: Record<Role, Capability[]> = {
@@ -136,6 +147,8 @@ const MATRIX: Record<Role, Capability[]> = {
   assistant: [
     'upload-source-material', 'run-transformation',
     'view-own-courses', 'view-registered-students', 'change-own-password',
+    // Keeps the reading list; does not set work and does not mark it.
+    'set-reading',
   ],
 
   // READS ONE LANGUAGE AND VOUCHES FOR WHAT IT SAYS. Not a second author: they
@@ -148,7 +161,10 @@ const MATRIX: Record<Role, Capability[]> = {
     'view-own-courses', 'study-published-material', 'change-own-password',
   ],
 
-  student: ['study-published-material', 'ask-course-ai', 'change-own-password'],
+  student: [
+    'study-published-material', 'ask-course-ai', 'change-own-password',
+    'submit-assignment',
+  ],
 };
 
 export function can(role: Role, capability: Capability): boolean {
@@ -183,4 +199,6 @@ export const REFUSAL: Partial<Record<Capability, string>> = {
   'request-translation': 'Translation is asked for by the lecturer whose lecture it is.',
   'set-working-language': 'Your working language is changed by the registry, so that a term is studied in one language.',
   'authorise-own-voice': 'Only the person whose voice it is can authorise its use.',
+  'mark-assignment': 'A mark is an academic judgement about a student. It is the lecturer’s, and this platform never suggests one.',
+  'set-assignment': 'Work is set by the people who teach the course.',
 };

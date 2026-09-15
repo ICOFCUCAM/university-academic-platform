@@ -17,8 +17,9 @@
 // ---------------------------------------------------------------------------
 
 import type {
-  Artefact, ArtefactVersion, Course, Department, Enrolment, Faculty, Lecture,
-  Person, QuizAttempt, StudyAid, TutorConversation, TutorMessage, University,
+  Artefact, ArtefactVersion, Assignment, Course, Department, Enrolment, Faculty,
+  Lecture, Person, QuizAttempt, Reading, StudyAid, Submission, TutorConversation,
+  TutorMessage, University,
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
@@ -73,6 +74,17 @@ export interface Store {
 
   attempts(studyAidId: string, personId?: string): Promise<QuizAttempt[]>;
   saveAttempt(attempt: QuizAttempt): Promise<QuizAttempt>;
+
+  readings(courseId: string): Promise<Reading[]>;
+  saveReading(reading: Reading): Promise<Reading>;
+
+  assignments(courseId: string): Promise<Assignment[]>;
+  assignment(id: string): Promise<Assignment | null>;
+  saveAssignment(assignment: Assignment): Promise<Assignment>;
+  /** Every submission for one assignment, or one student's across a course. */
+  submissions(assignmentId: string, studentId?: string): Promise<Submission[]>;
+  saveSubmission(submission: Submission): Promise<Submission>;
+  submissionById(id: string): Promise<Submission | null>;
 
   conversations(courseId: string, studentId: string): Promise<TutorConversation[]>;
   saveConversation(conversation: TutorConversation): Promise<TutorConversation>;

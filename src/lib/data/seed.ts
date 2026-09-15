@@ -259,6 +259,9 @@ export const DEMO: Snapshot = {
   studyAids: [],
   progress: [],
   attempts: [],
+  readings: [],
+  assignments: [],
+  submissions: [],
   conversations: [],
   messages: [],
 };

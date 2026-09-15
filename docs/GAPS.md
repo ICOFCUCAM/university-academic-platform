@@ -47,9 +47,9 @@ Three kinds of entry:
 
 | | State |
 |---|---|
-| **Reading materials** | **Not built.** "Add reading materials" appears in the lecturer's capability list. There is no artefact kind for a reading list or an uploaded document. |
-| **Assignments** | **Not built.** Named in the same list. No submission, no marking, no due dates. |
-| **Monitoring student engagement** | **Not built** beyond counts. `view-engagement` is held and the screens show enrolment numbers; there is no per-student or per-lecture engagement data because nothing is recorded (see progress tracking). |
+| **Reading materials** | **Built.** A reading list the lecturer sets, kept in their own citation style and published like everything else. No uploaded documents (no storage). |
+| **Assignments** | **Built.** Set, published, handed in, marked by a person with words, released deliberately. No file attachments, no plagiarism checking, no rubrics. |
+| **Monitoring student engagement** | **Built** as counts per lecture — readers, listeners, quizzes sat and the cohort's average — with the lectures the cohort has not read flagged as a gap in delivery. Never a name; `cohortShape` cannot return one. |
 | **A default voice per course** | Stubbed. `Course.defaultVoice` and `allowedVoices` exist in the model; no screen sets them. |
 | **The university's own standard voice** | Stubbed. `voicesFor` accepts one; nothing configures it. |
 
