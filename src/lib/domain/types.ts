@@ -309,6 +309,14 @@ export interface Artefact {
    * the student listens to part two on the way home.
    */
   parts?: { part: number; ofParts: number; label: string; body?: string; mediaPath?: string; seconds?: number }[];
+
+  /**
+   * A TRANSCRIPT'S TIMINGS AND SPEAKERS, where the transcription service
+   * reported them. Optional because most do not, and the screen says "no
+   * timings" rather than showing 00:00 against every line — a timestamp
+   * nobody measured is worse than none.
+   */
+  segments?: { start: number; end: number; speaker?: string; text: string }[];
   mediaPath?: string;
   mediaSeconds?: number;
 

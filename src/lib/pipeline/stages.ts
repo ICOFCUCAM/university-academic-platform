@@ -72,7 +72,10 @@ export const STAGES: Stage[] = [
   {
     kind: 'transcript',
     label: 'Transcript',
-    purpose: 'Every word, as spoken, with timings. Working material, not a handout.',
+    // NO CLAIM ABOUT TIMINGS. It said "with timings" for weeks while nothing
+    // in the platform could produce one; a description that promises what the
+    // code does not do is the same fault as a screenshot that does.
+    purpose: 'Every word, as spoken — with timings and speakers where the service reports them. Working material, not a handout.',
     from: 'recording',
     by: 'transcription',
     requiresApprovedSource: false,

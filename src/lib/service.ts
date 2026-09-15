@@ -162,7 +162,10 @@ export async function runStage(
   try {
     // Every run is costed, whatever it was: what a lecture costs to process is
     // the first question a university asks before it buys.
-    const charge = async (stage: string, producedBy: string, inText: string, outText: string, usage?: { inputTokens?: number; outputTokens?: number }) => {
+    const charge = async (
+      stage: string, producedBy: string, inText: string, outText: string,
+      usage?: { inputTokens?: number; outputTokens?: number; seconds?: number },
+    ) => {
       await store.recordCost({
         id: randomUUID(),
         courseId: artefact.courseId,
@@ -177,7 +180,39 @@ export async function runStage(
       });
     };
 
-    if (kind === 'audio_15min') {
+    // ---- TRANSCRIPTION ------------------------------------------------
+    //
+    // The one stage that starts from audio rather than text. It went through
+    // the language-model branch for weeks and died there with "transcript is
+    // not made by the language model" — true, and useless.
+    if (kind === 'transcript') {
+      if (!source!.mediaPath) {
+        throw new Error('There is no recording to transcribe. Paste the transcript instead.');
+      }
+      const heard = await e.transcriber.transcribe({
+        mediaPath: source!.mediaPath,
+        // The course's own vocabulary as a hint: it is what stops "rubisco"
+        // coming back as "rubisko" in the first place.
+        hint: where.course.terminology?.join(', '),
+      });
+      artefact.body = heard.text;
+      artefact.producedBy = heard.producedBy;
+      artefact.segments = 'segments' in heard
+        ? (heard as { segments?: Artefact['segments'] }).segments : undefined;
+      await charge(kind, heard.producedBy, source!.mediaPath, heard.text, heard.usage);
+
+      // The meter has been waiting for this number: until something listens to
+      // the recording, nobody knows how long it is.
+      const spoken = heard.usage?.seconds;
+      if (spoken && !lecture.sourceMinutes) {
+        lecture.sourceMinutes = Math.round(spoken / 60);
+        await store.saveLecture(lecture);
+        await store.recordUsage({
+          id: randomUUID(), personId: artefact.ownerId, period: period(),
+          minutes: lecture.sourceMinutes, lectureId: lecture.id, at: now(),
+        });
+      }
+    } else if (kind === 'audio_15min') {
       // One recording per part of the script, so a ninety-minute lecture
       // arrives as two lessons rather than one compressed one.
       const parts = source!.parts?.length ? source!.parts : [
@@ -185,9 +220,15 @@ export async function runStage(
       ];
       const spokenParts = [];
       for (const part of parts) {
-        const spoken = await e.speech.speak({ script: part.body ?? source!.body ?? '' });
+        const spoken = await e.speech.speak({
+          script: part.body ?? source!.body ?? '',
+          voice: where.course.defaultVoice,
+          courseId: artefact.courseId,
+          lectureId: artefact.lectureId,
+        });
         spokenParts.push({ ...part, mediaPath: spoken.mediaPath, seconds: spoken.seconds });
         artefact.producedBy = spoken.producedBy;
+        await charge(kind, spoken.producedBy, part.body ?? '', '', { seconds: spoken.seconds });
       }
       artefact.parts = spokenParts;
       artefact.mediaPath = spokenParts[0]?.mediaPath;

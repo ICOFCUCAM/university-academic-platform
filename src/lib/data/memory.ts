@@ -120,6 +120,10 @@ export function createMemoryStore(initial: Snapshot): Store {
     async artefacts(lectureId) { return clone(db.artefacts.filter((a) => a.lectureId === lectureId)); },
     async artefactsForCourse(courseId) { return clone(db.artefacts.filter((a) => a.courseId === courseId)); },
     async artefact(id) { return clone(db.artefacts.find((a) => a.id === id) ?? null); },
+    async artefactsByMediaKey(key) {
+      return clone(db.artefacts.filter((a) => a.mediaPath === key
+        || a.parts?.some((part) => part.mediaPath === key)));
+    },
     async saveArtefact(artefact) {
       const at = db.artefacts.findIndex((a) => a.id === artefact.id);
       if (at >= 0) db.artefacts[at] = artefact; else db.artefacts.push(artefact);

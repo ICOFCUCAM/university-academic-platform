@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { anthropicConfigured, anthropicModel } from './anthropic';
+import { httpSpeech, httpTranscriber } from './httpVendors';
 import { offlineEngine, offlineSpeech, offlineTranscriber } from './offline';
 import type { Engine } from './provider';
 
@@ -11,8 +12,24 @@ let cached: Engine | null = null;
 export function engine(): Engine {
   if (cached) return cached;
 
+  // Transcription and speech are configured independently of the language
+  // model: a university may run its own transcription and no model at all, or
+  // the other way round, and neither should switch the other off.
+  const transcriber = process.env.ACADEMIC_TRANSCRIBER ? httpTranscriber() : offlineTranscriber();
+  const speech = process.env.ACADEMIC_SPEECH ? httpSpeech() : offlineSpeech();
+
   if (!anthropicConfigured()) {
-    cached = offlineEngine();
+    const offline = offlineEngine();
+    cached = {
+      ...offline,
+      transcriber,
+      speech,
+      describe: () => ({
+        ...offline.describe(),
+        transcription: transcriber.id,
+        speech: speech.id,
+      }),
+    };
     return cached;
   }
 
@@ -22,8 +39,8 @@ export function engine(): Engine {
   // and until they do, those two stages say so instead of failing obscurely.
   cached = {
     model,
-    transcriber: offlineTranscriber(),
-    speech: offlineSpeech(),
+    transcriber,
+    speech,
     live: true,
     describe: () => ({
       model: model.id,

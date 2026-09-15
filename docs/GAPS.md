@@ -19,14 +19,14 @@ Three kinds of entry:
 
 | | State | What this blocks |
 |---|---|---|
-| **Transcription** | Stubbed — `Transcriber` interface, refuses by name | The pipeline cannot start from audio at all. Every demonstration begins from a pasted transcript. |
-| **Speaker separation** | **Not built** | Named in the specification ("speaker separation where possible"); the transcript has no speaker field and no diarisation step. |
-| **Timestamps in the transcript** | **Not built** | `stages.ts` describes the transcript as "every word, as spoken, **with timings**". There are no timings. Either the transcriber must supply them or that line is a lie. |
-| **Text-to-speech** | Stubbed — `SpeechSynthesiser` refuses by name | No audio file has ever been produced. The 15-minute lesson exists as a script; the durations shown are *estimates* from a words-per-minute table. |
-| **Voice synthesis / lecturer voice** | Stubbed — consent record, catalogue, UI | The consent layer is real and enforced. The cloning it governs does not exist. |
-| **Audio player** | **Not built** | No player, no speed control applied to real audio, no download, no offline listening ("listen anywhere" is a promise on paper). |
-| **File storage** | **Not built** | The upload form records a file *name*. MP3/M4A/WAV/video are not accepted, stored or served. |
-| **Live microphone recording** | **Not built** | Named in the specification. |
+| **Transcription** | **Built against a configured service.** `ACADEMIC_TRANSCRIBER` — an ordinary multipart endpoint returning `{text, segments}`, which is what Whisper-compatible services and most self-hosted runners speak. Tested against a fake server; **never run against a paid vendor**. |
+| **Speaker separation** | **Built where the service reports it.** Speaker labels pass through exactly as given — `SPEAKER_00` is not renamed, because the platform does not know which speaker is the lecturer. No diarisation of our own. |
+| **Timestamps in the transcript** | **Built where the service reports them**, shown beside each line, and absent where it does not — never 00:00 against every line. |
+| **Text-to-speech** | **Built against a configured service.** `ACADEMIC_SPEECH` — `{text, voice}` in, audio bytes out, stored and served. Untested against a paid vendor. Duration is what the service reported, or unknown. |
+| **Voice synthesis / lecturer voice** | Stubbed — consent record, catalogue, UI | The consent layer is real and enforced. No cloning vendor is wired; the voice id is passed to the speech service and what it does with it is its business. |
+| **Audio player** | **Built.** Parts, speed from the student's profile, download, and "listened" recorded when playback starts rather than when the page loads. |
+| **File storage** | **Built, on disk.** `ACADEMIC_MEDIA_DIR`; keys minted by the platform so a filename cannot reach the path; served through a route that asks `mayAct` rather than relying on an unguessable URL. No object store (S3/Supabase) — one file against the same interface. |
+| **Live microphone recording** | **Not built.** Named in the specification; the upload accepts a file, not a stream. |
 | **Authentication** | Stubbed — a demonstration switcher, labelled as one | Supabase Auth, SSO, password reset, sessions: none. `src/lib/session.ts` is the only file that would change. |
 | **Database** | Stubbed — in-process store with an optional JSON snapshot | Nothing survives a deployment. The `Store` interface is the seam; no Postgres/Supabase implementation exists. |
 | **Job queue** | Stubbed — in-process, single worker, three retries | Survives neither a restart nor a second instance. No broker, no dead-letter handling, no back-pressure. |

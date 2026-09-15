@@ -55,6 +55,8 @@ export interface Store {
   artefacts(lectureId: string): Promise<Artefact[]>;
   artefactsForCourse(courseId: string): Promise<Artefact[]>;
   artefact(id: string): Promise<Artefact | null>;
+  /** Used by the media route to find what a stored file belongs to. */
+  artefactsByMediaKey(key: string): Promise<Artefact[]>;
   saveArtefact(artefact: Artefact): Promise<Artefact>;
   deleteArtefact(id: string): Promise<void>;
 

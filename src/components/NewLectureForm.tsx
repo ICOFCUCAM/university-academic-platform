@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Upload } from 'lucide-react';
 
 /**
- * The upload. MP3, M4A, WAV and video are what a lecture arrives as; a
- * transcript is what it arrives as when the university transcribes elsewhere,
- * or when the lecture was not recorded at all and somebody has the text.
+ * The upload. MP3, M4A, WAV, AAC, OGG, WebM, MP4 and MOV are what a lecture
+ * arrives as; a transcript is what it arrives as when the university
+ * transcribes elsewhere, or when the lecture was not recorded at all.
  *
- * NOTHING IS UPLOADED FROM THIS DEMONSTRATION — there is no object store wired
- * up, so the file's name is recorded and the transcript box is the working
- * path. See INTEGRATION.md §4 for where storage plugs in. Saying so here is
- * better than a progress bar that means nothing.
+ * THE FILE IS ACTUALLY STORED when `ACADEMIC_MEDIA_DIR` is set — on the
+ * machine, which is what a university that will not let lecture audio leave
+ * its estate actually wants. With nothing configured the upload says so rather
+ * than accepting the file and dropping it, which is what it used to do.
  */
 export function NewLectureForm({ courseId, nextSequence }: { courseId: string; nextSequence: number }) {
   const router = useRouter();
@@ -20,6 +20,7 @@ export function NewLectureForm({ courseId, nextSequence }: { courseId: string; n
   const [abstract, setAbstract] = useState('');
   const [minutes, setMinutes] = useState(50);
   const [transcript, setTranscript] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +35,22 @@ export function NewLectureForm({ courseId, nextSequence }: { courseId: string; n
       });
       const payload = await response.json();
       if (!response.ok) { setError(payload.error); return; }
+
+      // The recording goes up after the lecture exists, because it is stored
+      // against the lecture: no orphan files, and nothing kept for a lecture
+      // that was refused by the meter.
+      if (file) {
+        const carrier = new FormData();
+        carrier.set('file', file);
+        carrier.set('lectureId', payload.lecture.id);
+        const upload = await fetch('/api/upload', { method: 'POST', body: carrier });
+        if (!upload.ok) {
+          const failure = await upload.json();
+          setError(`The lecture was created, but the recording was not stored: ${failure.error}`);
+          return;
+        }
+      }
+
       router.push(`/lectures/${payload.lecture.id}`);
     } finally { setBusy(false); }
   }
@@ -70,9 +87,14 @@ export function NewLectureForm({ courseId, nextSequence }: { courseId: string; n
             className="mt-1 w-28 rounded-md border border-page-line px-3 py-2 text-sm"
           />
         </div>
-        <label className="flex cursor-not-allowed items-center gap-2 rounded-md border border-dashed border-page-line px-3 py-2 text-sm text-ink-faint">
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-page-line px-3 py-2 text-sm text-ink-soft hover:border-brand/40">
           <Upload size={15} />
-          MP3, M4A, WAV or video — storage not configured in this build
+          {file ? file.name : 'Choose a recording — MP3, M4A, WAV, AAC, OGG, WebM, MP4, MOV'}
+          <input
+            type="file" className="hidden"
+            accept="audio/*,video/*"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
         </label>
       </div>
 

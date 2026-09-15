@@ -63,6 +63,9 @@ export interface Transcriber {
 export interface SpeechRequest {
   script: string;
   voice?: string;
+  /** Where the audio belongs, so the store can file it under the lecture. */
+  courseId?: string;
+  lectureId?: string;
 }
 
 export interface SpeechResult {

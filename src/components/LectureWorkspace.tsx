@@ -11,6 +11,7 @@ import { WordCheck } from '@/components/WordCheck';
 import { StateBadge } from '@/components/ui';
 import { CopyButton, LanguageBar, LockedLanguage, StandingNote, type LanguageRow } from '@/components/LanguageBar';
 import { ListeningPanel, type VoiceOfferView } from '@/components/ListeningPanel';
+import { AudioLesson } from '@/components/AudioLesson';
 import { clock, direction, estimateSeconds, LANGUAGE_BY_CODE, TRANSLATABLE } from '@/lib/i18n/languages';
 
 interface Stage {
@@ -680,10 +681,39 @@ export function LectureWorkspace({
             ) : (
               <article className="rounded-lg border border-page-line bg-page-card p-6 md:p-8" dir={dir}>
                 {shown.kind === 'audio_15min' ? (
-                  <div className="text-sm text-ink-soft">
-                    {shown.mediaPath
-                      ? <audio controls src={shown.mediaPath} className="w-full" />
-                      : 'No speech service is configured, so this lesson exists as a script rather than a recording.'}
+                  shown.mediaPath || shown.parts?.some((p) => p.mediaPath) ? (
+                    <AudioLesson
+                      courseId={lecture.courseId}
+                      lectureId={lecture.id}
+                      speed={audioSpeed ?? 1}
+                      parts={(shown.parts?.filter((p) => p.mediaPath) ?? [])
+                        .map((p) => ({ label: p.label, src: `/api/media/${p.mediaPath}`, seconds: p.seconds }))
+                        .concat(shown.mediaPath && !shown.parts?.length
+                          ? [{ label: '15-minute lesson', src: `/api/media/${shown.mediaPath}`, seconds: shown.mediaSeconds }]
+                          : [])}
+                    />
+                  ) : (
+                    <p className="text-sm text-ink-soft">
+                      No speech service is configured, so this lesson exists as a script rather than a
+                      recording. The script is on the stage above.
+                    </p>
+                  )
+                ) : shown.kind === 'transcript' && shown.segments?.length ? (
+                  // TIMINGS AND SPEAKERS WHERE THE SERVICE REPORTED THEM, and
+                  // plain text where it did not — never 00:00 against every
+                  // line, which is a timestamp nobody measured.
+                  <div className="space-y-2">
+                    {shown.segments.map((segment, i) => (
+                      <p key={i} className="flex gap-3 text-sm">
+                        <span className="w-14 shrink-0 font-mono text-xs text-ink-faint">
+                          {Math.floor(segment.start / 60)}:{String(Math.floor(segment.start % 60)).padStart(2, '0')}
+                        </span>
+                        {segment.speaker && (
+                          <span className="w-24 shrink-0 text-xs font-medium text-ink-soft">{segment.speaker}</span>
+                        )}
+                        <span>{segment.text}</span>
+                      </p>
+                    ))}
                   </div>
                 ) : shown.body ? (
                   <Markdown source={shown.body} />
