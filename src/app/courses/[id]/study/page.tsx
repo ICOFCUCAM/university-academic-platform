@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { direction } from '@/lib/i18n/languages';
+import { mayEnterCourse } from '@/lib/domain/ownership';
 import { StudyRoom } from '@/components/StudyRoom';
 import { Empty, PageHeader } from '@/components/ui';
 
@@ -15,7 +16,7 @@ export default async function Study({ params }: { params: { id: string } }) {
 
   const enrolment = await store.enrolmentFor(course.id, actor.id);
   const teaching = course.lecturerIds.includes(actor.id);
-  if (!teaching && !enrolment && course.access !== 'open') {
+  if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
         <Empty title="Not your course" body="Revision material is for the people on the course." />

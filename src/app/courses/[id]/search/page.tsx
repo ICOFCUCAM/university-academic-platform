@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
+import { mayEnterCourse } from '@/lib/domain/ownership';
 import { CourseSearch } from '@/components/CourseSearch';
 import { Empty, PageHeader } from '@/components/ui';
 
@@ -12,8 +13,7 @@ export default async function Search({ params }: { params: { id: string } }) {
   if (!course) notFound();
 
   const enrolment = await getStore().enrolmentFor(course.id, actor.id);
-  const teaching = course.lecturerIds.includes(actor.id);
-  if (!teaching && !enrolment && course.access !== 'open') {
+  if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
         <Empty title="Not your course" body="Search is for the people on the course." />

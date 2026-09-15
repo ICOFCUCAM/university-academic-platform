@@ -212,6 +212,34 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('The catalogue, which asks nothing about whoever is reading');
+{
+  const store = fresh();
+  const listed = await S.catalogue(store);
+
+  t.check('the open course is in it', listed.map((c) => c.code), ['OPEN 100']);
+  // A COURSE THE INSTITUTION HAS NOT OPENED IS NOT IN THE CATALOGUE. There is
+  // no second idea of "public" here that could drift from the `access` that
+  // `mayAct` reads.
+  t.check('…and the taught course is not',
+    listed.some((c) => c.code === 'BIOL 101'), false);
+
+  t.check('it counts lectures a reader could actually open', listed[0].lectures, 1);
+  t.check('…and names who teaches it', listed[0].lecturers, ['Dr Amara Okonjo']);
+  t.check('…and says nothing about anybody reading it',
+    JSON.stringify(listed).includes('person-'), false);
+
+  // THE LANGUAGES ARE THE ONES WITH SOMETHING IN THEM. A language a course is
+  // "offered in" with nothing published in it is a promise, not a catalogue
+  // entry — the taught course offers four and has published in two.
+  const biol = await store.course('course-biol101');
+  await store.saveCourse({ ...biol, access: 'open' });
+  const withBiol = (await S.catalogue(store)).find((c) => c.code === 'BIOL 101');
+  t.check('offered in four languages', (biol.offeredLanguages ?? []).length + 1, 4);
+  t.check('…and listed in the two that have something published',
+    withBiol.languages.sort(), ['en', 'fr']);
+}
+
 t.section('Who did what, and what is never written down');
 {
   const store = fresh();

@@ -72,6 +72,29 @@ export function isEnrolled(enrolment: Enrolment | null | undefined): boolean {
 }
 
 /**
+ * MAY THIS PERSON BE ON THIS COURSE'S SCREENS AT ALL?
+ *
+ * Written because five pages each answered it themselves and two of them got
+ * it wrong: the catalogue offered "Open the course" and the course then told
+ * the reader they were not enrolled, because that page had never heard of
+ * `access: 'open'` while `mayAct` and the service had. A rule that is written
+ * down five times is a rule with five versions.
+ *
+ * It answers the door, not what is behind it: what a person may read, edit or
+ * publish once inside is still `mayAct`, artefact by artefact.
+ */
+export function mayEnterCourse(
+  actor: Actor, course: Course, enrolment: Enrolment | null | undefined,
+): boolean {
+  if (teaches(actor, course)) return true;
+  if (isEnrolled(enrolment)) return true;
+  if (course.access === 'open') return true;
+  // The registry and a coordinator run the environment, and a course they
+  // cannot open is a course they cannot administer.
+  return actor.role === 'registry' || actor.role === 'coordinator';
+}
+
+/**
  * The one door. Every route, every screen and every store adapter calls this.
  */
 export function mayAct(actor: Actor, act: Act, artefact: Artefact, scene: Scene): Decision {

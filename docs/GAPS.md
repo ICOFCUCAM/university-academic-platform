@@ -91,7 +91,7 @@ Three kinds of entry:
 | **Independent educators** | Stubbed. `Publisher` exists as a type and `departmentId` is optional; there is no sign-up, no publisher-owned tenancy, no isolation between publishers. |
 | **Cross-university libraries / partnerships** | Stubbed. `Course.partners` records intent; no federation, no sharing, no sync. |
 | **Revenue share, marketplace, catalogue browsing** | **Not built.** |
-| **Open courses** | Built — `access: 'open'` is enforced in `mayAct` and tested. No public catalogue page to find one. |
+| **Open courses** | **Built, and now findable.** `/catalogue` lists what the institution has opened, asks nothing about whoever is reading, and counts only the lectures and languages that actually have something published — a language a course is "offered in" with nothing in it is a promise, not a catalogue entry. A paid course appears with its price and the plain sentence that this platform takes no payments, because a catalogue implying otherwise would be the one page here that lied. Building it caught a real defect: five course screens each decided enrolment for themselves, two had never heard of `access: 'open'`, and the catalogue's own "Open the course" button led to "you are not enrolled". They now all ask `mayEnterCourse`. |
 
 ## 8. Integration with the ICOF Global University system
 

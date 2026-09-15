@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { knowledgeBase } from '@/lib/service';
+import { mayEnterCourse } from '@/lib/domain/ownership';
 import { CourseChat } from '@/components/CourseChat';
 import { Empty, PageHeader } from '@/components/ui';
 
@@ -14,8 +15,7 @@ export default async function CourseAIPage({ params }: { params: { id: string } 
   if (!course) notFound();
 
   const enrolment = await store.enrolmentFor(course.id, actor.id);
-  const teaching = course.lecturerIds.includes(actor.id);
-  if (!teaching && !enrolment) {
+  if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
         <Empty title="Not your course" body="The Course AI answers for the people on the course." />

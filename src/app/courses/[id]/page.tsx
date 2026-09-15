@@ -4,6 +4,7 @@ import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText, Se
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
+import { mayEnterCourse } from '@/lib/domain/ownership';
 import { TodaysLearning } from '@/components/TodaysLearning';
 import { Card, Empty, PageHeader } from '@/components/ui';
 
@@ -20,7 +21,10 @@ export default async function CoursePage({ params }: { params: { id: string } })
   const teaching = course.lecturerIds.includes(actor.id);
   const enrolment = await store.enrolmentFor(course.id, actor.id);
   const student = actor.role === 'student';
-  if (student && !enrolment) {
+  // ONE RULE, ASKED. This page used to decide enrolment for itself, so the
+  // catalogue offered "Open the course" and the course then refused the
+  // reader: two ideas of what open means, one of them wrong.
+  if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
         <Empty title="Not your course" body="You are not enrolled on this course, so its material is not yours to read." />

@@ -115,6 +115,25 @@ Why fold a membrane like that? Surface area. A reaction that happens on a membra
 The chloroplast also carries its own DNA, in a small circular molecule, and its own ribosomes. That is the evidence for endosymbiosis: the proposal that the chloroplast was once a free-living photosynthetic bacterium taken inside another cell. I am not going to argue the case in full today, but notice what kind of argument it is — it is an argument from structure to history.
 `.trim();
 
+const OPEN_NOTES = `
+## In one paragraph
+A paper is not read from the first word to the last. The abstract says what
+the authors want you to take away; the figures say what they actually
+measured; and the methods say whether the two are the same thing. Read them
+in that order, and read the limitations before the conclusion.
+
+## What you should be able to do after it
+- Say what a figure is claiming without reading its caption first.
+- Find the sentence where a result stops and an interpretation begins.
+- Tell a sample size that supports a claim from one that does not.
+
+## What the lecturer stressed
+A paper you disagree with is still evidence. Read it twice before you say so.
+
+## Left open
+Statistics. This lecture is about reading, not about testing.
+`.trim();
+
 const lectures: Lecture[] = [
   lecture(1, 'What a cell is', 'The cell as the unit of life, and what "unit" is doing in that sentence.'),
   lecture(2, 'Membranes', 'Why a boundary that lets some things through is the precondition for everything else.'),
@@ -122,6 +141,10 @@ const lectures: Lecture[] = [
   lecture(4, 'Energy in the cell: ATP', 'The cell’s currency, and why a currency is needed at all.'),
   lecture(5, 'The chloroplast', 'The organelle, its three compartments, and an argument from structure to history.'),
   lecture(6, 'Photosynthesis', 'Light into chemical energy, in two stages that need different things.'),
+  {
+    ...lecture(1, 'How to read a paper', 'The order to read it in, and where a result stops.'),
+    id: 'lecture-open-01', courseId: 'course-open-astro',
+  },
 ];
 
 // A TRANSLATION IN THE DEMONSTRATION, because the multilingual layer is only
@@ -162,6 +185,12 @@ Rien n'est laissé ouvert.
 `.trim();
 
 const artefacts: Artefact[] = [
+  // The open course, with one lecture somebody outside the cohort can read.
+  {
+    ...artefact('lecture-open-01', 'structured_notes', OPEN_NOTES, 'published', null),
+    courseId: 'course-open-astro',
+  },
+
   // Lecture 05 — through the pipeline and published.
   artefact('lecture-05', 'recording', '', 'published', null),
   artefact('lecture-05', 'transcript', L5_TEXT, 'approved', 'lecture-05-recording'),
@@ -214,6 +243,20 @@ export const DEMO: Snapshot = {
     offeredLanguages: ['fr', 'es', 'ar'],
     // What completing this course means, as this lecturer defines it.
     completion: { lecturesRead: 0.8, quizzesTaken: 3, quizAverage: 60 },
+    status: 'running',
+  }, {
+    // AND ONE THE INSTITUTION HAS OPENED. `access: 'open'` was enforced in
+    // `mayAct` from the beginning and there was no course in the demonstration
+    // that used it, which made the catalogue a screen nobody could look at.
+    id: 'course-open-astro',
+    departmentId: 'dept-biology',
+    code: 'OPEN 100',
+    title: 'Reading a Scientific Paper',
+    session: '2026/2027',
+    description: 'How to read a paper you were not trained to read: what the abstract is for, what a figure is claiming, and where a result stops.',
+    lecturerIds: [LECTURER],
+    originalLanguage: 'en',
+    access: 'open',
     status: 'running',
   }],
   people: [

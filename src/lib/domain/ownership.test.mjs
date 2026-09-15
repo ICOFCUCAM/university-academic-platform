@@ -96,4 +96,25 @@ t.check('…and a paid course is not open',
 t.check('…a withdrawn student reads nothing', may(student, 'read', { state: 'published' }, { enrolment: { ...enrolled, status: 'withdrawn' } }), false);
 t.check('…and no student edits anything', may(student, 'edit', { state: 'published' }, { enrolment: enrolled }), false);
 
+t.section('The door, which five screens used to answer for themselves');
+
+// THIS IS A REGRESSION, and it was found by clicking the button. The catalogue
+// offered "Open the course", the course page had never heard of `access:
+// 'open'`, and a reader who followed the link was told they were not enrolled.
+// A rule written down in five places is a rule with five versions.
+const door = (actor, over = {}, enrolment = null) =>
+  O.mayEnterCourse(actor, { ...course, ...over }, enrolment);
+
+t.check('whoever teaches it may be there', door(lecturer), true);
+t.check('a student on it may be there', door(student, {}, enrolled), true);
+t.check('a stranger may not', door(stranger), false);
+t.check('…until the institution opens the course', door(stranger, { access: 'open' }), true);
+// PAID IS NOT OPEN. No checkout exists, and `access: 'paid'` behaves exactly
+// like `enrolled` — which is the safe direction and has to stay that way.
+t.check('a paid course is not an open one', door(stranger, { access: 'paid' }), false);
+t.check('a withdrawn student is not on it',
+  door(student, {}, { ...enrolled, status: 'withdrawn' }), false);
+t.check('the registry may be there, because it runs the environment',
+  door(registry), true);
+
 t.done();

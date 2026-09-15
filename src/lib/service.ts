@@ -2183,6 +2183,54 @@ export async function issueCertificate(
   return certificate;
 }
 
+/** ---- The catalogue ------------------------------------------------------
+ *
+ * WHAT A UNIVERSITY PUBLISHING INTERNATIONALLY ACTUALLY NEEDS: a page where
+ * somebody who is not enrolled on anything can see what is open.
+ *
+ * It lists what `access` already says is open, which is the same word
+ * `mayAct` reads — there is no second idea of "public" here that could drift
+ * from the one that governs. A course that is not open is not in the
+ * catalogue, and a course that is open was made open by the institution.
+ */
+export async function catalogue(store: Store) {
+  const [courses, people, departments, faculties] = await Promise.all([
+    store.courses(), store.people(), store.departments(), store.faculties(),
+  ]);
+
+  const listed = courses.filter((course) =>
+    course.status === 'running' && (course.access === 'open' || course.access === 'paid'));
+
+  return Promise.all(listed.map(async (course) => {
+    const artefacts = await store.artefactsForCourse(course.id);
+    const published = artefacts.filter((a) => a.state === 'published');
+    const department = departments.find((d) => d.id === course.departmentId);
+    const faculty = faculties.find((f) => f.id === department?.facultyId);
+
+    // THE LANGUAGES SOMEBODY CAN ACTUALLY STUDY IT IN, which is not the same
+    // as the languages it is offered in: a language with nothing published in
+    // it is a promise, and a catalogue is not the place to make one.
+    const languages = [...new Set(published
+      .map((a) => a.language ?? course.originalLanguage ?? 'en'))];
+
+    return {
+      id: course.id,
+      code: course.code,
+      title: course.title,
+      description: course.description,
+      access: course.access ?? 'enrolled',
+      price: course.price,
+      where: [faculty?.name, department?.name].filter(Boolean).join(' · '),
+      lecturers: people.filter((p) => course.lecturerIds.includes(p.id)).map((p) => p.name),
+      originalLanguage: course.originalLanguage ?? 'en',
+      languages,
+      // Lectures with something a student could actually open.
+      lectures: new Set(published.map((a) => a.lectureId)).size,
+      certifies: !!course.completion,
+    };
+  }));
+}
+
 /**
  * What somebody with no account sees when they type the code in. The facts on
  * the certificate and nothing else about the person — not their email, not

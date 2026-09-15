@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Globe } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { direction } from '@/lib/i18n/languages';
@@ -19,6 +20,14 @@ export default async function Courses() {
         eyebrow={university.name}
         title="Courses"
         subtitle="A course is the central object: its lectures, everything made from them, and a Course AI that answers out of that material and nothing else."
+        actions={(
+          <Link
+            href="/catalogue"
+            className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+          >
+            <Globe size={16} /> Open courses
+          </Link>
+        )}
       />
       <div className="px-6 py-6 md:px-8">
         {courses.length === 0 ? (
