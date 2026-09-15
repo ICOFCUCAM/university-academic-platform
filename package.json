@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:ui && npm run test:quiz && npm run test:flashcards && npm run test:progress && npm run test:bench && npm run test:storage && npm run test:vendors && npm run test:usage && npm run test:limits && npm run test:coursework && npm run test:service",
+    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:ui && npm run test:quiz && npm run test:flashcards && npm run test:progress && npm run test:session && npm run test:store && npm run test:bench && npm run test:storage && npm run test:vendors && npm run test:usage && npm run test:limits && npm run test:coursework && npm run test:service",
     "test:capabilities": "node src/lib/capabilities.test.mjs",
     "test:ownership": "node src/lib/domain/ownership.test.mjs",
     "test:pipeline": "node src/lib/pipeline/stages.test.mjs",
@@ -34,7 +34,10 @@
     "test:storage": "node src/lib/storage/storage.test.mjs",
     "test:vendors": "node src/lib/ai/httpVendors.test.mjs",
     "test:bench": "node bench/cases.test.mjs",
-    "test:ui": "node src/lib/i18n/ui.test.mjs"
+    "test:ui": "node src/lib/i18n/ui.test.mjs",
+    "test:store": "node src/lib/data/memory.test.mjs",
+    "conformance:supabase": "node src/lib/data/supabase.conformance.mjs",
+    "test:session": "node src/lib/auth/session.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

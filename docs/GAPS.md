@@ -27,8 +27,8 @@ Three kinds of entry:
 | **Audio player** | **Built.** Parts, speed from the student's profile, download, and "listened" recorded when playback starts rather than when the page loads. |
 | **File storage** | **Built, on disk.** `ACADEMIC_MEDIA_DIR`; keys minted by the platform so a filename cannot reach the path; served through a route that asks `mayAct` rather than relying on an unguessable URL. No object store (S3/Supabase) — one file against the same interface. |
 | **Live microphone recording** | **Not built.** Named in the specification; the upload accepts a file, not a stream. |
-| **Authentication** | Stubbed — a demonstration switcher, labelled as one | Supabase Auth, SSO, password reset, sessions: none. `src/lib/session.ts` is the only file that would change. |
-| **Database** | Stubbed — in-process store with an optional JSON snapshot | Nothing survives a deployment. The `Store` interface is the seam; no Postgres/Supabase implementation exists. |
+| **Authentication** | **Built for a mounted deployment.** Three modes: the demonstration switcher (default), a signed host header (`ACADEMIC_SESSION_MODE=header` + shared secret, HMAC, five-minute window), and a verified Supabase access token (signature and expiry, not merely decoded). No fallback outside `demo`. No login screen of its own, no password reset, no SSO client — the host owns those. |
+| **Database** | **Adapter written, never run.** `data/supabase.ts` against the tables in `docs/integration/001_lecture_studio.sql`, with `data/conformance.mjs` as the suite it must pass — `npm run conformance:supabase` against a real project. Until that passes it is a draft, and the in-memory store is what runs. |
 | **Job queue** | Stubbed — in-process, single worker, three retries | Survives neither a restart nor a second instance. No broker, no dead-letter handling, no back-pressure. |
 | **Notifications** | **Built, in-app.** A bell with a count, raised when a stage finishes or fails, a translation is ready, work is set or returned, or an allowance runs out. No email or push (a vendor and a consent conversation). |
 
@@ -98,9 +98,9 @@ Three kinds of entry:
 | | State |
 |---|---|
 | **The mapping** | Written — `docs/INTEGRATION.md`, entity by entity. |
-| **The Supabase adapter** | **Not built.** No `Store` implementation against their schema. |
-| **The migration** | **Not written**, and must not be described as ready: in that repository a migration is handed over with bundles rebuilt, proved twice against a database shaped like theirs, and a readiness probe added. |
-| **Row-level security** | **Not written.** The RLS must mirror `domain/ownership.ts` or the database will be more permissive than the product. |
+| **The Supabase adapter** | **Written, unverified.** Reads their `courses`, `course_offerings`, `lecturers`, `students` and `course_roll`; keeps this platform's own objects in `ls_*`. Never returned a row. |
+| **The migration** | **Written, never run** — `docs/integration/001_lecture_studio.sql`. It is not idempotent-proved, has not been loaded against a database shaped like theirs, and no readiness probe reports it. It must not be described as ready. |
+| **Row-level security** | **Written** in the same file, mirroring `domain/ownership.ts` policy for policy — a student sees a published artefact and nothing else, the owner alone may write, and `ls_cohort_shape` has no `person_id` so a lecturer cannot learn who. Unverified like the rest. |
 | **A portal entry** | Not added to their `portalNav.tsx`; the snippet is in the integration document. |
 
 ## 9. Smaller debts, named so they are not discovered
