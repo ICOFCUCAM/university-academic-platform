@@ -140,7 +140,7 @@ export function StudyRoom({
         ) : showing.kind === 'flashcards' ? (
           <Card className="p-6">
             <h2 className="mb-4 font-semibold">{showing.title}</h2>
-            <FlashcardDeck body={showing.body} dir={dir} />
+            <FlashcardDeck studyAidId={showing.id} body={showing.body} dir={dir} />
           </Card>
         ) : (
           <Card className="p-6" dir={dir}>

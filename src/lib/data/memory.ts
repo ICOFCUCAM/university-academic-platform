@@ -15,6 +15,7 @@ import type {
   TutorMessage, University,
 } from '../domain/types';
 import type { ProgressRecord } from '../study/progress';
+import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -35,6 +36,7 @@ export interface Snapshot {
   studyAids: StudyAid[];
   progress: ProgressRecord[];
   attempts: QuizAttempt[];
+  recalls: Recall[];
   costs: RunCost[];
   usage: UsageRecord[];
   notifications: Notification[];
@@ -180,6 +182,21 @@ export function createMemoryStore(initial: Snapshot): Store {
       db.attempts.push(attempt);
       save();
       return clone(attempt);
+    },
+
+    async recalls(personId, studyAidId) {
+      return clone((db.recalls ?? []).filter((r) => r.personId === personId
+        && (!studyAidId || r.studyAidId === studyAidId)));
+    },
+    async saveRecall(recall) {
+      db.recalls = db.recalls ?? [];
+      // One row per card per student: answering again rewrites the schedule
+      // rather than leaving a trail of every time they turned a card over.
+      const at = db.recalls.findIndex((r) => r.personId === recall.personId
+        && r.studyAidId === recall.studyAidId && r.card === recall.card);
+      if (at >= 0) db.recalls[at] = recall; else db.recalls.push(recall);
+      save();
+      return clone(recall);
     },
 
     async costs(courseId) { return clone(db.costs.filter((c) => c.courseId === courseId)); },

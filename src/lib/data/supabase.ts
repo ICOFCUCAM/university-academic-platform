@@ -25,6 +25,7 @@ import type {
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
+import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -273,6 +274,13 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         : q.eq('study_aid_id', studyAidId))) as unknown as QuizAttempt[];
     },
     async saveAttempt(attempt) { await upsert('ls_quiz_attempts', attempt as unknown as Row); return attempt; },
+
+    async recalls(personId, studyAidId) {
+      return (await rows('ls_recalls', (q) => studyAidId
+        ? q.eq('person_id', personId).eq('study_aid_id', studyAidId)
+        : q.eq('person_id', personId))) as unknown as Recall[];
+    },
+    async saveRecall(recall) { await upsert('ls_recalls', recall as unknown as Row); return recall; },
 
     async costs(courseId) {
       return (await rows('ls_run_costs', (q) => q.eq('course_id', courseId))) as unknown as RunCost[];

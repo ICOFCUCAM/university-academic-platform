@@ -261,6 +261,7 @@ export const DEMO: Snapshot = {
   studyAids: [],
   progress: [],
   attempts: [],
+  recalls: [],
   costs: [],
   usage: [],
   notifications: [],

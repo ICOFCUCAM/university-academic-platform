@@ -23,6 +23,7 @@ import type {
 } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
+import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -79,6 +80,14 @@ export interface Store {
 
   attempts(studyAidId: string, personId?: string): Promise<QuizAttempt[]>;
   saveAttempt(attempt: QuizAttempt): Promise<QuizAttempt>;
+
+  /**
+   * One student's revision schedule. `personId` is required rather than
+   * optional, unlike `progress`, because there is no question this answers
+   * for anybody else: see study/repetition.ts.
+   */
+  recalls(personId: string, studyAidId?: string): Promise<Recall[]>;
+  saveRecall(recall: Recall): Promise<Recall>;
 
   /** What each run cost, and what each account has processed. */
   costs(courseId: string): Promise<RunCost[]>;

@@ -37,10 +37,10 @@ Three kinds of entry:
 | | State |
 |---|---|
 | **Taking a quiz** | **Built.** `study/quiz.ts` parses the generated text into questions, holds the answers back, marks multiple choice and refuses to machine-mark a written answer; `QuizRunner` asks them and records the attempt. |
-| **Flashcards as cards** | **Built.** `study/flashcards.ts` reads both generated shapes; `FlashcardDeck` shows one side at a time. No spaced repetition — "I knew it" is not yet remembered between sessions. |
+| **Flashcards as cards** | **Built.** `study/flashcards.ts` reads both generated shapes; `FlashcardDeck` shows one side at a time, in the order the schedule chose — due first, then new. |
 | **Progress tracking** | **Built.** Read, listened, revised and quiz-taken, deduplicated per day, with a student's own record and a cohort shape that reduces `personId` to a set size so a lecturer cannot learn who. |
 | **"Today's Learning" panel** | **Built** — the per-lecture `📖 Read · 🎧 Listen · 🧠 Revision · ❓ Quiz · 🤖 Ask` strip, with ticks against what is done. |
-| **Spaced repetition** | **Not built.** Flashcard confidence is per session. |
+| **Spaced repetition** | **Built.** `study/repetition.ts` keeps one row per card per student — how far up a six-rung ladder it has climbed and when it is next worth asking — and nothing else: no history, no timings, no cohort view, and an RLS policy that lets the card's owner read it and nobody else. A card got wrong falls to the bottom rather than down one rung, running the deck three times in an evening promotes nothing, and a deck with nothing due says so and gives the date instead of reshuffling. |
 | **Certificates** | **Built.** `credential/certificate.ts` reads the course's completion rule against what the student actually did — no rule certifies nothing, deliberately — and `issue-certificate` belongs to the lecturer and the registry, never a student or an assistant. Verification is a public page that asks nothing about whoever is looking and returns only the attestation. No printed artefact, no signing key, no external registry. |
 
 ## 3. Lecturer features named in the specification and absent

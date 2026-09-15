@@ -127,5 +127,24 @@ export async function conformance(make, label, t) {
       (await store.attempts('aid-1', 'person-student')).length, 1);
     t.check('…and not for somebody else',
       (await store.attempts('aid-1', 'person-other')).length, 0);
+
+    const recall = {
+      id: 'rc-1', personId: 'person-student', courseId: course.id, studyAidId: 'aid-1',
+      card: 'thylakoid', rung: 1, seen: 1, wrong: 0,
+      lastAt: '2026-01-01T09:00:00.000Z', dueAt: '2026-01-04T09:00:00.000Z',
+    };
+    await store.saveRecall(recall);
+    t.check('a schedule is kept for its own student',
+      (await store.recalls('person-student', 'aid-1')).length, 1);
+    t.check('…and is invisible to anybody else',
+      (await store.recalls('person-other')).length, 0);
+
+    // ANSWERING AGAIN REWRITES THE ROW. If this appended instead, the schedule
+    // would become a log of somebody's evening, which is the one thing
+    // study/repetition.ts sets out not to keep.
+    await store.saveRecall({ ...recall, rung: 2, seen: 2, dueAt: '2026-01-11T09:00:00.000Z' });
+    const after = await store.recalls('person-student', 'aid-1');
+    t.check('and the card has one row, not two', after.length, 1);
+    t.check('…which is the new schedule', after[0].rung, 2);
   }
 }

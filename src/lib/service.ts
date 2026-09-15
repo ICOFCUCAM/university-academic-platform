@@ -43,6 +43,8 @@ import {
   assess, attestation, verificationCode, type Certificate, type Evidence,
 } from './credential/certificate';
 import { mark, parseQuiz } from './study/quiz';
+import { parseFlashcards } from './study/flashcards';
+import { cardKey, holding, schedule, session, type Recall } from './study/repetition';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
 import type { Store } from './data/store';
@@ -1507,6 +1509,64 @@ export async function sitQuiz(
   }
 
   return { attempt, marked };
+}
+
+/** ---- Revision that remembers ------------------------------------------- */
+
+/**
+ * The evening's deck for one student: what is due, what is new, and what is
+ * resting until a date. Nobody else can ask for it — not a lecturer, not the
+ * registry, not a co-enrolled student — because a revision schedule is a
+ * record of what somebody keeps forgetting.
+ */
+export async function deckFor(store: Store, actor: Actor, studyAidId: string) {
+  const aid = await store.studyAidById(studyAidId);
+  if (!aid) throw new Refused('No such set of cards.');
+
+  const where = await scene(store, aid.courseId, actor.id);
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') {
+    throw new Refused('This course is not one of yours.');
+  }
+
+  const cards = parseFlashcards(aid.body ?? '');
+  const recalls = await store.recalls(actor.id, studyAidId);
+  return { ...session(cards, recalls, now()), ...holding(cards, recalls), cards: cards.length };
+}
+
+/**
+ * One card turned over and answered. The schedule is rewritten in place: there
+ * is one row per card per student and no history behind it, so nothing here
+ * can later be read as a timeline of somebody's evening.
+ */
+export async function answerCard(
+  store: Store, actor: Actor, studyAidId: string, front: string, knew: boolean,
+): Promise<Recall> {
+  const aid = await store.studyAidById(studyAidId);
+  if (!aid) throw new Refused('No such set of cards.');
+
+  const where = await scene(store, aid.courseId, actor.id);
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') {
+    throw new Refused('This course is not one of yours.');
+  }
+
+  // THE CARD MUST BE IN THE DECK. Without this the schedule would accept any
+  // string a page cared to post and fill up with cards no lecture ever taught.
+  const card = cardKey(front);
+  if (!parseFlashcards(aid.body ?? '').some((c) => cardKey(c.front) === card)) {
+    throw new Refused('That card is not in this set.');
+  }
+
+  const existing = (await store.recalls(actor.id, studyAidId)).find((r) => r.card === card);
+  const next = schedule(existing, { knew, at: now() });
+
+  return store.saveRecall({
+    id: existing?.id ?? randomUUID(),
+    personId: actor.id,
+    courseId: aid.courseId,
+    studyAidId,
+    card,
+    ...next,
+  });
 }
 
 /** ---- Reading, and work that a person marks ----------------------------- */

@@ -212,6 +212,39 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('A deck that remembers what you could not recall');
+{
+  const store = fresh();
+  const cards = await S.makeStudyAid(store, e, student, 'course-biol101',
+    { kind: 'flashcards', lectures: [6] });
+
+  const first = await S.deckFor(store, student, cards.id);
+  t.check('every card is new the first evening', first.due.length, 0);
+  t.check('…and the whole set is fresh', first.fresh.length, first.cards);
+  t.check('…with nothing held yet', first.held, 0);
+
+  const front = first.fresh[0].front;
+  await S.answerCard(store, student, cards.id, front, true);
+  const after = await S.deckFor(store, student, cards.id);
+  t.check('a card answered is a card resting', after.resting, 1);
+  t.check('…and it has left the fresh pile', after.fresh.length, first.fresh.length - 1);
+  t.check('…and the deck knows when it comes back', typeof after.nextDueAt, 'string');
+
+  // THE DECK IS THE DECK. Without this the schedule would accept whatever a
+  // page posted and fill with cards no lecture ever taught.
+  await t.refuses('a card that is not in the set is refused',
+    () => S.answerCard(store, student, cards.id, 'Something nobody taught', true));
+
+  // AND A SCHEDULE HAS ONE READER. Not the lecturer, not the registry: it is a
+  // record of what somebody keeps forgetting.
+  await S.answerCard(store, student, cards.id, front, false);
+  t.check('the lecturer’s cohort shape still knows nothing of the cards',
+    JSON.stringify(await S.cohortOn(store, lecturer, 'course-biol101')).toLowerCase()
+      .includes(front.toLowerCase()), false);
+  t.check('and the store hands a schedule only to its owner',
+    (await store.recalls('person-lecturer')).length, 0);
+}
+
 t.section('The ladder: lecture → course → department → university');
 {
   const store = fresh();

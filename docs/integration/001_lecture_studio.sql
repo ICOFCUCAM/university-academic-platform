@@ -196,6 +196,25 @@ create table if not exists ls_progress (
 
 create index if not exists ls_progress_by_course on ls_progress (course_id);
 
+-- ONE ROW PER CARD PER STUDENT, rewritten in place. There is deliberately no
+-- history table behind this: the schedule is what the platform needs, and a
+-- log of every time somebody turned a card over at midnight is not.
+create table if not exists ls_recalls (
+  id            uuid primary key default gen_random_uuid(),
+  person_id     uuid not null references auth.users (id),
+  course_id     uuid not null references courses (id) on delete cascade,
+  study_aid_id  uuid not null references ls_study_aids (id) on delete cascade,
+  card          text not null,
+  rung          integer not null default 0,
+  seen          integer not null default 0,
+  wrong         integer not null default 0,
+  last_at       timestamptz not null default now(),
+  due_at        timestamptz not null,
+  unique (person_id, study_aid_id, card)
+);
+
+create index if not exists ls_recalls_due on ls_recalls (person_id, due_at);
+
 create table if not exists ls_readings (
   id            uuid primary key default gen_random_uuid(),
   course_id     uuid not null references courses (id) on delete cascade,
@@ -329,6 +348,7 @@ alter table ls_lecture_knowledge   enable row level security;
 alter table ls_study_aids          enable row level security;
 alter table ls_quiz_attempts       enable row level security;
 alter table ls_progress            enable row level security;
+alter table ls_recalls             enable row level security;
 alter table ls_readings            enable row level security;
 alter table ls_assignments         enable row level security;
 alter table ls_submissions         enable row level security;
@@ -381,6 +401,13 @@ create policy ls_attempts_own on ls_quiz_attempts for all
 -- PROGRESS WITHOUT SURVEILLANCE, at the database level too: a student reads
 -- their own rows; a lecturer reads none of them and uses ls_cohort_shape.
 create policy ls_progress_own on ls_progress for all
+  using (person_id = auth.uid()) with check (person_id = auth.uid());
+
+-- AND A REVISION SCHEDULE IS NOBODY ELSE'S BUSINESS AT ALL. There is no
+-- aggregate over this table and no policy that lets a lecturer read one row of
+-- it: "which cards is this cohort failing" is a question about the deck, and
+-- the deck is generated from lectures they can already read.
+create policy ls_recalls_own on ls_recalls for all
   using (person_id = auth.uid()) with check (person_id = auth.uid());
 
 create or replace view ls_cohort_shape
