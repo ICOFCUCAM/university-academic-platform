@@ -182,6 +182,29 @@ examination. **Course content is one academic source; the student's language is
 a presentation layer over it** — so the Course AI retrieves from the master and
 answers in whichever language the student reads.
 
+### The student's learning profile
+
+```
+MY LEARNING PROFILE
+  Working language   🇫🇷 Français     — locked; the registry changes it, with a reason
+  Voice              🎙️ Lecturer's    — yours, change it whenever you like
+  Speed              1.0×
+```
+
+Two layers, deliberately unlike each other. The **working language** is the
+academic environment — notes, transcript, audio, quizzes, flashcards, the Course
+AI — set once, with no switcher inside a course. The **voice** changes only how
+it sounds.
+
+And a lecturer's voice is never synthesised without their own authorisation:
+the capability is theirs alone, the default scope is translated audio only, a
+withdrawal is honoured at listening time, and where it is not enabled the
+option stays on screen saying so rather than quietly disappearing.
+
+If twenty thousand students work in French, the course has **one** French
+version — not twenty thousand translations. Two students in one seminar must
+not be revising from different papers.
+
 ## The Course AI
 
 Restricted to **one course's published lectures**. Ask it:

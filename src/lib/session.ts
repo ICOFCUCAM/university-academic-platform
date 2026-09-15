@@ -16,12 +16,25 @@ import { getStore } from './data';
 const COOKIE = 'academic_actor';
 const DEFAULT_ACTOR = 'person-lecturer';
 
-export async function currentActor(): Promise<Actor & { name: string }> {
+export async function currentActor(): Promise<Actor & {
+  name: string;
+  /** The one language this person's academic environment arrives in. */
+  workingLanguage?: string;
+  voicePreference?: string;
+  audioSpeed?: number;
+}> {
   const id = cookies().get(COOKIE)?.value ?? DEFAULT_ACTOR;
   const store = getStore();
   const person = (await store.person(id)) ?? (await store.person(DEFAULT_ACTOR));
   if (!person) throw new Error('No people are configured in this workspace.');
-  return { id: person.id, role: person.role as Role, name: person.name };
+  return {
+    id: person.id,
+    role: person.role as Role,
+    name: person.name,
+    workingLanguage: person.workingLanguage,
+    voicePreference: person.voicePreference,
+    audioSpeed: person.audioSpeed,
+  };
 }
 
 export const ACTOR_COOKIE = COOKIE;

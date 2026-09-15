@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles, UserRound } from 'lucide-react';
 import type { Person } from '@/lib/domain/types';
 import { ROLE_LABEL, type Role } from '@/lib/capabilities';
 
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/lectures', label: 'Lectures', icon: BookOpen },
   { href: '/courses', label: 'Courses', icon: GraduationCap },
+  { href: '/profile', label: 'My profile', icon: UserRound },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -55,6 +55,20 @@ export const CAPABILITIES = [
   'study-published-material',
   'ask-course-ai',
 
+  // ---- The student's environment, which is not theirs to change mid-course -
+  //
+  // A working language is chosen once and changed by an administrator with a
+  // reason. The student's own screens have no switcher: four half-remembered
+  // versions of one lecture is not a feature.
+  'set-working-language',
+
+  // ---- The lecturer's own voice -------------------------------------------
+  //
+  // Held by the lecturer alone. Not by the university, not by the registry: a
+  // voice is a person, and consent to synthesise one is not an institutional
+  // decision about an employee.
+  'authorise-own-voice',
+
   // ---- Everybody ----------------------------------------------------------
   'change-own-password',
 ] as const;
@@ -89,6 +103,8 @@ export const LECTURER_CAPABILITIES: Capability[] = [
   'change-own-password',
   // Asks for the translation; does not vouch for it.
   'request-translation',
+  // Their own voice, and nobody else's decision.
+  'authorise-own-voice',
 ];
 
 const MATRIX: Record<Role, Capability[]> = {
@@ -100,6 +116,9 @@ const MATRIX: Record<Role, Capability[]> = {
     'manage-faculties', 'manage-courses', 'assign-lecturers', 'manage-enrolment',
     'manage-people', 'view-registered-students', 'view-engagement',
     'change-own-password',
+    // A student's working language is changed here, with a reason recorded —
+    // not by the student, mid-term, on a whim.
+    'set-working-language',
   ],
 
   // A department's courses — the same environment powers, narrower, and
@@ -162,4 +181,6 @@ export const REFUSAL: Partial<Record<Capability, string>> = {
   'assign-lecturers': 'Who teaches a course is the university’s decision.',
   'approve-translation': 'A translation is vouched for by somebody who reads that language.',
   'request-translation': 'Translation is asked for by the lecturer whose lecture it is.',
+  'set-working-language': 'Your working language is changed by the registry, so that a term is studied in one language.',
+  'authorise-own-voice': 'Only the person whose voice it is can authorise its use.',
 };

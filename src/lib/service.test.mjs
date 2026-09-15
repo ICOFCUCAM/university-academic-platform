@@ -150,4 +150,26 @@ t.section('The knowledge base, built from the lectures that have been extracted'
     kb.coverage.filter((c) => !c.extracted).length, 4);
 }
 
+t.section('The approved master is immutable in substance');
+{
+  const store = fresh();
+  const made = await S.runStage(store, e, lecturer, 'lecture-04', 'corrected_text');
+  await S.approve(store, lecturer, made.id);
+  await S.publish(store, lecturer, made.id);
+
+  // A MODEL DOES NOT WRITE OVER AN APPROVAL. Not because the prompt forbids
+  // it — because the act is refused unless a person asks a second time.
+  await t.refuses('a regeneration of published material is refused',
+    () => S.runStage(store, e, lecturer, 'lecture-04', 'corrected_text'));
+
+  const again = await S.runStage(store, e, lecturer, 'lecture-04', 'corrected_text', { regenerate: true });
+  t.check('asked for explicitly, it runs', again.state, 'ready');
+  t.check('…and the approval did not survive it', again.approvedByName, undefined);
+  t.check('…nor the publication', again.publishedAt, undefined);
+  t.check('…and the old text is still in the history',
+    (await store.versions(again.id)).length >= 2, true);
+  t.check('…with the reason recorded',
+    (await store.versions(again.id)).some((v) => v.note.includes('the approval was cleared by it')), true);
+}
+
 t.done();

@@ -12,8 +12,11 @@
 // ---------------------------------------------------------------------------
 
 import { constitutionBlock } from './constitution';
+import { INTEGRITY_BLOCK } from './masterIntegrity';
 
 export const TRANSFORMATION_CONTRACT = `${constitutionBlock()}
+
+${INTEGRITY_BLOCK}
 
 ROLE: LECTURE TRANSFORMATION ENGINE
 

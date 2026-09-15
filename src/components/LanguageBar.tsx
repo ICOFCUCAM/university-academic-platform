@@ -22,6 +22,31 @@ export interface LanguageRow {
  * another, so a student in Nairobi and a student in Lyon are reading two
  * renderings of one lecture rather than the end of a chain.
  */
+/**
+ * THE STUDENT DOES NOT SWITCH LANGUAGES INSIDE A COURSE.
+ *
+ * Their working language is an account setting, and the whole environment
+ * arrives in it. A switcher here would invite exactly the thing it is meant to
+ * prevent: a term revised from four half-remembered versions of one lecture.
+ * So a student is shown which language they are in, and where it is changed.
+ */
+export function LockedLanguage({ code }: { code: string }) {
+  const language = LANGUAGE_BY_CODE[code];
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-page-line bg-page-card px-6 py-3 md:px-8">
+      <Globe size={15} className="text-ink-faint" />
+      <span className="rounded-full border border-brand bg-brand px-3 py-1.5 text-xs text-white">
+        {language?.endonym ?? code}
+      </span>
+      <span className="text-xs text-ink-faint">
+        Your working language. Notes, audio, quizzes and the Course AI all arrive in it —{' '}
+        <a href="/profile" className="text-brand hover:underline">your learning profile</a>{' '}
+        says where it is changed.
+      </span>
+    </div>
+  );
+}
+
 export function LanguageBar({
   original, rows, selected, offered, canTranslate, busy, onSelect, onTranslate,
 }: {

@@ -29,11 +29,15 @@ const MAY = [
   // ASKS FOR A TRANSLATION, AND DOES NOT VOUCH FOR IT. The pair below is the
   // whole multilingual rule in two lines.
   ['ask for their lecture to be translated', 'request-translation'],
+  // THEIR OWN VOICE, AND NOBODY ELSE'S DECISION. A voice is a person; consent
+  // to synthesise one is not an institutional decision about an employee.
+  ['authorise the use of their own voice', 'authorise-own-voice'],
 ];
 const MAY_NOT = [
   // A lecturer who does not read Arabic cannot approve the Arabic, and a
   // platform that let them would be manufacturing an approval nobody gave.
   ['vouch for a translation they cannot read', 'approve-translation'],
+  ['change a student’s working language', 'set-working-language'],
   ['open or retire a course', 'manage-courses'],
   ['say who teaches it', 'assign-lecturers'],
   ['enrol or remove a student', 'manage-enrolment'],
@@ -51,7 +55,13 @@ for (const [what, capability] of [
   ['open courses', 'manage-courses'],
   ['assign lecturers', 'assign-lecturers'],
   ['enrol students', 'manage-enrolment'],
+  ['change a student’s working language, with a reason', 'set-working-language'],
 ]) t.check(`the registry may ${what}`, C.can('registry', capability), true);
+
+// AND NOT A VOICE. A university cannot consent on a lecturer's behalf to
+// having their voice synthesised, however convenient that would be.
+t.check('the registry may NOT authorise a lecturer’s voice',
+  C.can('registry', 'authorise-own-voice'), false);
 
 for (const [what, capability] of [
   ['upload a lecture', 'upload-source-material'],
@@ -84,6 +94,10 @@ t.section('A student consumes and interacts — and uploads nothing');
 t.check('may study what was published', C.can('student', 'study-published-material'), true);
 t.check('may ask the Course AI', C.can('student', 'ask-course-ai'), true);
 t.check('may not upload a lecture to a course', C.can('student', 'upload-source-material'), false);
+// THE WORKING LANGUAGE IS NOT A SWITCH IN THE CORNER OF A COURSE. A student
+// hopping between languages mid-term revises from four half-remembered
+// versions of one lecture.
+t.check('may not change their own working language', C.can('student', 'set-working-language'), false);
 t.check('may not run a transformation on one', C.can('student', 'run-transformation'), false);
 t.check('may not publish anything', C.can('student', 'publish-to-students'), false);
 t.check('…and holds three capabilities, no more', C.capabilitiesOf('student').length, 3);

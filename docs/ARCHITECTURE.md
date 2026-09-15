@@ -132,6 +132,49 @@ that opens courses and enrols students; an independent educator is the whole
 institution. `Course.departmentId` is therefore optional — requiring one would
 make an independent educator invent a faculty.
 
+## 0e. Two personalisation layers, and they are not alike
+
+```
+USER
+ ├── Working language  ONE, an account setting, changed by the registry
+ │     └── notes · transcript · audio · quizzes · flashcards · Course AI · interface
+ ├── Voice preference  the student's own, changed whenever they like
+ └── Enrolled courses
+       └── Course → master language → approved content → language versions
+```
+
+**Working language is an environment, not a switch.** There is no language
+picker inside a course: a student hopping between languages mid-term revises
+from four half-remembered versions of one lecture and quotes, in an
+examination, a sentence their lecturer never said in that language. It is set
+once, changed by the registry with a **reason recorded** (`setWorkingLanguage`),
+and the change is shown on the student's profile: who did it, when, why.
+
+**Voice is a listening preference.** It changes how a lesson sounds and nothing
+about what it says, so it needs no ceremony at all — and it sits beside speed
+on the same panel, with the language shown *locked*.
+
+**A lecturer's voice is never synthesised without their authorisation.** Not as
+a default, not as an experiment, not because the institution would like it.
+`authorise-own-voice` is held by the lecturer alone — the registry cannot
+consent on their behalf — the scope is narrow by default (*translated audio
+only*), the agreement is dated, and a withdrawal is honoured at **listening**
+time, so audio already generated stops being offered. Where a lecturer has not
+enabled it the option stays on the screen reading *"Not available — the
+lecturer has not enabled voice preservation"*, because an option that silently
+disappears leaves a student wondering whether the platform used it anyway.
+
+## 0f. One French version, not twenty thousand
+
+If twenty thousand students have French as their working language, the course
+has **one** approved French version — one translation of the master, one French
+quiz, one French audio script — served to all of them. `makeStudyAid` looks for
+an existing version of the same brief in the asked-for language before making
+anything, and for the existing **master** before making a second one.
+
+The saving is the smaller reason. The real one: two students in the same
+seminar must not be revising from different papers.
+
 ## 1. The four products inside this one
 
 | | What it is | Where it lives |

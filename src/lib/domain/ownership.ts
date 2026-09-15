@@ -99,7 +99,13 @@ export function mayAct(actor: Actor, act: Act, artefact: Artefact, scene: Scene)
   // reading something no academic has yet stood behind.
   if (actor.role === 'student') {
     if (act !== 'read') return refuse('A student studies the material; they do not change it.');
-    if (!isEnrolled(enrolment)) return refuse('This course is not one of yours.');
+    // AN OPEN COURSE IS OPEN. A university publishing internationally, a
+    // continuing-education course, a course a partner's students take: the
+    // cohort is everybody signed in, and the published material is what they
+    // get. Everything else about the platform is unchanged — approval,
+    // terminology, the master, the languages.
+    const open = course.access === 'open';
+    if (!open && !isEnrolled(enrolment)) return refuse('This course is not one of yours.');
     if (artefact.state !== 'published') {
       return refuse('This has not been released by the lecturer yet.');
     }

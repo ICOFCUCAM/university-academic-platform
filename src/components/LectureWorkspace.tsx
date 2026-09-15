@@ -9,7 +9,8 @@ import { REVISION_LABEL, type RevisionKind } from '@/lib/ai/prompts';
 import { Markdown } from '@/components/Markdown';
 import { WordCheck } from '@/components/WordCheck';
 import { StateBadge } from '@/components/ui';
-import { CopyButton, LanguageBar, StandingNote, type LanguageRow } from '@/components/LanguageBar';
+import { CopyButton, LanguageBar, LockedLanguage, StandingNote, type LanguageRow } from '@/components/LanguageBar';
+import { ListeningPanel, type VoiceOfferView } from '@/components/ListeningPanel';
 import { clock, direction, estimateSeconds, LANGUAGE_BY_CODE, TRANSLATABLE } from '@/lib/i18n/languages';
 
 interface Stage {
@@ -24,6 +25,7 @@ interface Stage {
 export function LectureWorkspace({
   lecture, stages, artefacts: initial, canEdit, student,
   originalLanguage, offeredLanguages, canTranslate, canApproveTranslation,
+  workingLanguage, voices, voicePreference, audioSpeed,
 }: {
   lecture: Lecture;
   stages: Stage[];
@@ -34,6 +36,11 @@ export function LectureWorkspace({
   offeredLanguages: string[];
   canTranslate: boolean;
   canApproveTranslation: boolean;
+  /** The student's own, from their learning profile. Locked for them. */
+  workingLanguage?: string;
+  voices: VoiceOfferView[];
+  voicePreference?: string;
+  audioSpeed?: number;
 }) {
   const router = useRouter();
   const [artefacts, setArtefacts] = useState(initial);
@@ -49,9 +56,14 @@ export function LectureWorkspace({
   const [revision, setRevision] = useState<RevisionKind>('full');
   const [compare, setCompare] = useState(false);
   const [checkingWords, setCheckingWords] = useState(false);
-  const [language, setLanguage] = useState(originalLanguage);
+  // A student is in their working language and stays there. Staff move
+  // between languages because reviewing them is their job.
+  const [language, setLanguage] = useState(
+    student ? workingLanguage ?? originalLanguage : originalLanguage,
+  );
   const [translating, setTranslating] = useState<string | null>(null);
   const [showMaster, setShowMaster] = useState(false);
+  const [confirming, setConfirming] = useState<ArtefactKind | null>(null);
 
   // ---- MASTER, AND ITS DERIVATIVES ---------------------------------------
   //
@@ -101,13 +113,13 @@ export function LectureWorkspace({
       return next;
     });
 
-  async function run(kind: ArtefactKind) {
-    setBusy(kind); setError(null);
+  async function run(kind: ArtefactKind, regenerate = false) {
+    setBusy(kind); setError(null); setConfirming(null);
     try {
       const response = await fetch(`/api/lectures/${lecture.id}/run`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind, mode, persona, revision }),
+        body: JSON.stringify({ kind, mode, persona, revision, regenerate }),
       });
       const payload = await response.json();
       if (!response.ok) { setError(payload.error); return; }
@@ -200,7 +212,7 @@ export function LectureWorkspace({
 
   return (
     <>
-    <LanguageBar
+    {student ? <LockedLanguage code={language} /> : <LanguageBar
       original={originalLanguage}
       rows={languageRows}
       selected={language}
@@ -209,7 +221,7 @@ export function LectureWorkspace({
       busy={translating}
       onSelect={(code) => { setLanguage(code); setShowMaster(false); }}
       onTranslate={translate}
-    />
+    />}
     <div className="grid gap-6 px-6 py-6 md:px-8 lg:grid-cols-[260px_1fr]">
       {/* ---- THE PIPELINE, AS A COLUMN YOU CAN WATCH FILL IN ------------- */}
       <aside className="space-y-2">
@@ -278,20 +290,42 @@ export function LectureWorkspace({
                   {artefact ? 'Translate again' : 'Translate'}
                 </button>
               )}
-              {!translated && canEdit && stage.from && (
-                <button
-                  type="button"
-                  onClick={() => run(stage.kind)}
-                  disabled={busy !== null || blocked}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded border border-page-line bg-white px-2 py-1 text-[11px] text-ink-soft disabled:opacity-40 hover:border-brand/40"
-                  title={wordsUnchecked
-                    ? 'Check the words of the script first — a spoken mistake cannot be seen'
-                    : blocked ? `${stages.find((s) => s.kind === stage.from)?.label} must be approved first` : ''}
-                >
-                  {busy === stage.kind ? <Loader2 size={12} className="animate-spin" /> : artefact ? <RotateCw size={12} /> : <Play size={12} />}
-                  {artefact ? 'Regenerate' : 'Generate'}
-                </button>
-              )}
+              {!translated && canEdit && stage.from && (() => {
+                // ---- WRITING OVER AN APPROVAL IS A SECOND, DELIBERATE ACT --
+                //
+                // The approved master is immutable in substance, so the button
+                // does not simply do it: it says what it will cost first, and
+                // the lecturer presses again.
+                const approved = artefact?.state === 'approved' || artefact?.state === 'published';
+                const asking = confirming === stage.kind;
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => (approved && !asking
+                        ? setConfirming(stage.kind)
+                        : run(stage.kind, approved))}
+                      disabled={busy !== null || blocked}
+                      className={`mt-2 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] disabled:opacity-40 ${
+                        asking ? 'border-red-300 bg-red-50 text-bad' : 'border-page-line bg-white text-ink-soft hover:border-brand/40'
+                      }`}
+                      title={wordsUnchecked
+                        ? 'Check the words of the script first — a spoken mistake cannot be seen'
+                        : blocked ? `${stages.find((s) => s.kind === stage.from)?.label} must be approved first` : ''}
+                    >
+                      {busy === stage.kind ? <Loader2 size={12} className="animate-spin" /> : artefact ? <RotateCw size={12} /> : <Play size={12} />}
+                      {asking ? 'Yes — replace it' : artefact ? 'Regenerate' : 'Generate'}
+                    </button>
+                    {asking && (
+                      <p className="mt-1 text-[11px] text-bad">
+                        {artefact?.state === 'published'
+                          ? 'Students are reading this. It will be withdrawn, your approval cleared, and every translation of it marked stale.'
+                          : 'Your approval will be cleared and every translation of it marked stale.'}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           );
         })}
@@ -496,6 +530,16 @@ export function LectureWorkspace({
                 <span className="font-semibold uppercase tracking-wide text-ok">Corrected by the lecturer</span>
                 {' — this is the authoritative version. Everything built from it is regenerated from here.'}
               </div>
+            )}
+
+            {(shown.kind === 'audio_15min' || shown.kind === 'teaching_script') && (
+              <ListeningPanel
+                voices={voices}
+                language={language}
+                lockedForStudent={student}
+                preference={voicePreference}
+                speed={audioSpeed ?? 1}
+              />
             )}
 
             {checkingWords && shown.kind === 'teaching_script' && (

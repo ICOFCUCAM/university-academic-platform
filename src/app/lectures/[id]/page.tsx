@@ -5,6 +5,7 @@ import { currentActor } from '@/lib/session';
 import { STAGES } from '@/lib/pipeline/stages';
 import { mayAct } from '@/lib/domain/ownership';
 import { can } from '@/lib/capabilities';
+import { voicesFor } from '@/lib/voice/voices';
 import { LectureWorkspace } from '@/components/LectureWorkspace';
 import { LectureCompanion } from '@/components/LectureCompanion';
 import { Empty, PageHeader } from '@/components/ui';
@@ -41,6 +42,26 @@ export default async function LecturePage({ params }: { params: { id: string } }
     || lecture.ownerId === actor.id;
   const student = actor.role === 'student';
 
+  // ---- WHAT THIS LECTURE MAY BE SPOKEN IN --------------------------------
+  //
+  // Computed here, from the lecturer's own consent record, so that a voice
+  // nobody authorised is never even sent to the browser as an option.
+  const lecturer = await store.person(lecture.ownerId);
+  const listeningLanguage = student ? actor.workingLanguage ?? course.originalLanguage ?? 'en' : course.originalLanguage ?? 'en';
+  const voices = voicesFor({
+    lecturerName: lecturer?.name ?? 'The lecturer',
+    lecturerConsent: lecturer?.voiceConsent,
+    use: listeningLanguage === (course.originalLanguage ?? 'en') ? 'original-audio' : 'translated-audio',
+    allowed: course.allowedVoices,
+  }).map((offer) => ({
+    id: offer.voice.id,
+    label: offer.voice.label,
+    blurb: offer.voice.blurb,
+    kind: offer.voice.kind,
+    available: offer.available,
+    unavailableBecause: offer.unavailableBecause,
+  }));
+
   return (
     <div>
       <PageHeader
@@ -68,6 +89,10 @@ export default async function LecturePage({ params }: { params: { id: string } }
         offeredLanguages={course.offeredLanguages ?? []}
         canTranslate={can(actor.role, 'request-translation') && course.lecturerIds.includes(actor.id)}
         canApproveTranslation={can(actor.role, 'approve-translation')}
+        workingLanguage={actor.workingLanguage}
+        voices={voices}
+        voicePreference={actor.voicePreference}
+        audioSpeed={actor.audioSpeed}
       />
 
       {/* THE LECTURE COMPANION. "Ask about this lecture" means this lecture —

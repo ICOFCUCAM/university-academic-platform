@@ -72,6 +72,12 @@ export const CONSTITUTION: Article[] = [
     rule: 'A lecture is translated only after the lecturer has approved the original, never from a draft and never from another translation. The original governs: where a translation and the original differ, the original is what was taught. Protected terminology crosses languages unchanged, and who has read a translation is stated on the page.',
     enforcedBy: ['i18n/translate.ts', 'i18n/validate.ts', 'service.ts'],
   },
+  {
+    n: 9,
+    title: 'The approved master is immutable in substance',
+    rule: 'AI may transcribe, clean, structure, translate, synthesise and generate learning formats. It may not reinterpret, fact-check, alter, normalise, replace or inject its own position — and it never writes over what a person has approved. A regeneration of approved material is an explicit human act, it clears the approval, and everything derived from it goes stale.',
+    enforcedBy: ['ai/masterIntegrity.ts', 'service.ts', 'domain/ownership.ts'],
+  },
 ];
 
 /** The constitution as it appears to a model, at the head of the contract. */

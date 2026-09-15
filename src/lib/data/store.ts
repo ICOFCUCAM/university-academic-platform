@@ -37,10 +37,12 @@ export interface Store {
 
   people(): Promise<Person[]>;
   person(id: string): Promise<Person | null>;
+  savePerson(person: Person): Promise<Person>;
 
   enrolments(courseId: string): Promise<Enrolment[]>;
   enrolmentFor(courseId: string, studentId: string): Promise<Enrolment | null>;
   enrolmentsOf(studentId: string): Promise<Enrolment[]>;
+  saveEnrolment(enrolment: Enrolment): Promise<Enrolment>;
 
   lectures(courseId: string): Promise<Lecture[]>;
   lecture(id: string): Promise<Lecture | null>;

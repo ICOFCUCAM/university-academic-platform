@@ -75,12 +75,24 @@ export function createMemoryStore(initial: Snapshot): Store {
 
     async people() { return clone(db.people); },
     async person(id) { return clone(db.people.find((p) => p.id === id) ?? null); },
+    async savePerson(person) {
+      const at = db.people.findIndex((p) => p.id === person.id);
+      if (at >= 0) db.people[at] = person; else db.people.push(person);
+      save();
+      return clone(person);
+    },
 
     async enrolments(courseId) { return clone(db.enrolments.filter((e) => e.courseId === courseId)); },
     async enrolmentFor(courseId, studentId) {
       return clone(db.enrolments.find((e) => e.courseId === courseId && e.studentId === studentId) ?? null);
     },
     async enrolmentsOf(studentId) { return clone(db.enrolments.filter((e) => e.studentId === studentId)); },
+    async saveEnrolment(enrolment) {
+      const at = db.enrolments.findIndex((e) => e.id === enrolment.id);
+      if (at >= 0) db.enrolments[at] = enrolment; else db.enrolments.push(enrolment);
+      save();
+      return clone(enrolment);
+    },
 
     async lectures(courseId) {
       return clone(db.lectures.filter((l) => l.courseId === courseId).sort((a, b) => a.sequence - b.sequence));
@@ -127,11 +139,11 @@ export function createMemoryStore(initial: Snapshot): Store {
     },
 
     async studyAids(courseId, personId) {
-      return clone(db.studyAids.filter((a) =>
-        a.courseId === courseId &&
-        // A private study aid belongs to the person who asked for it, and to
-        // nobody else — not to the cohort, not to the lecturer.
-        (a.audience === 'course' || !personId || a.requestedBy === personId)));
+      // Built from published lectures, so there is nothing personal in one and
+      // no reason to hide it. `personId` is kept in the signature because a
+      // deployment may want "mine first"; visibility is not what it decides.
+      void personId;
+      return clone(db.studyAids.filter((a) => a.courseId === courseId));
     },
     async saveStudyAid(aid) {
       const at = db.studyAids.findIndex((a) => a.id === aid.id);

@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
           producedBy: 'generated from this course’s lectures',
           studyAidId: aid.id,
           title: aid.title,
-          audience: aid.audience,
+          standing: aid.standing,
           language: aid.language,
           translatedFromId: aid.translatedFromId,
           outsideCourse: false,

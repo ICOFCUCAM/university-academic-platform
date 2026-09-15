@@ -14,7 +14,7 @@ export interface Turn {
   outsideCourse?: boolean;
   refused?: boolean;
   title?: string;
-  audience?: 'course' | 'private';
+  standing?: 'lecturer-requested' | 'unreviewed';
 }
 
 /**
@@ -74,7 +74,7 @@ export function CourseChat({
         outsideCourse: a.outsideCourse,
         refused: !!a.refusedReason,
         title: a.title,
-        audience: a.audience,
+        standing: a.standing,
       }]);
     } finally {
       setBusy(false);
@@ -141,7 +141,7 @@ export function CourseChat({
               {turn.title && (
                 <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-faint">
                   {turn.title}
-                  {turn.audience === 'private' && ' · generated for you, not reviewed by your lecturer'}
+                  {turn.standing === 'unreviewed' && ' · built from your published lectures, not read by your lecturer'}
                 </p>
               )}
               {turn.answeredIn === 'this-lecture' && (

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:service",
+    "test": "npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:service",
     "test:capabilities": "node src/lib/capabilities.test.mjs",
     "test:ownership": "node src/lib/domain/ownership.test.mjs",
     "test:pipeline": "node src/lib/pipeline/stages.test.mjs",
@@ -23,7 +23,8 @@
     "test:words": "node src/lib/ai/unusual.test.mjs",
     "test:offline": "node src/lib/ai/offline.test.mjs",
     "test:constitution": "node src/lib/ai/constitution.test.mjs",
-    "test:i18n": "node src/lib/i18n/translation.test.mjs"
+    "test:i18n": "node src/lib/i18n/translation.test.mjs",
+    "test:voice": "node src/lib/voice/voices.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -226,4 +226,29 @@ t.section('The Course AI answers out of the master, never out of a rendering');
   t.check('…and the master’s notes are', passages.some((p) => p.text.includes('Photosynthesis converts')), true);
 }
 
+t.section('One French version, not twenty thousand');
+{
+  const store = fresh();
+  const brief = { kind: 'test', lectures: [6], questions: 10, language: 'fr' };
+  const first = await S.makeStudyAid(store, e, student, 'course-biol101', brief);
+
+  // A SECOND STUDENT WITH THE SAME WORKING LANGUAGE GETS THE FIRST ONE'S.
+  // Not only because generating it again would multiply the platform's cost
+  // by its enrolment — because two students in one seminar must not be
+  // revising from different papers.
+  const other = { id: 'person-other', role: 'student' };
+  await store.savePerson({ id: 'person-other', name: 'Ama Boateng', role: 'student', workingLanguage: 'fr' });
+  await S.enrol(store, { id: 'person-registry', role: 'registry' }, 'course-biol101', 'person-other');
+  const second = await S.makeStudyAid(store, e, other, 'course-biol101', brief);
+  t.check('the second student gets the same quiz', second.id, first.id);
+  t.check('…and nothing was generated twice',
+    (await store.studyAids('course-biol101')).filter((a) => a.kind === 'test').length, 2);
+
+  // A DIFFERENT LANGUAGE IS A DIFFERENT VERSION, and one per language is the
+  // whole point: the Spanish cohort shares theirs too.
+  const spanish = await S.makeStudyAid(store, e, student, 'course-biol101', { ...brief, language: 'es' });
+  t.check('Spanish is its own version', spanish.language, 'es');
+  t.check('…still derived from the same master', spanish.translatedFromId, first.translatedFromId);
+}
+
 t.done();

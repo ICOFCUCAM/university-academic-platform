@@ -16,7 +16,8 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
-  Artefact, ArtefactKind, ArtefactVersion, Course, Lecture, Register, StudyAid,
+  Artefact, ArtefactKind, ArtefactVersion, Course, Enrolment, Lecture, Person,
+  Register, StudyAid,
 } from './domain/types';
 import { mayAct, type Actor } from './domain/ownership';
 import { can } from './capabilities';
@@ -28,6 +29,7 @@ import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
 import { protectTerms, restoreTerms, validateTerminology } from './ai/terminology';
+import { clearApproval, mayRegenerate } from './ai/masterIntegrity';
 import { translationPrompt, tutorLanguageNote } from './i18n/translate';
 import { validateTranslation } from './i18n/validate';
 import { LANGUAGE_BY_CODE, languageName, TRANSLATABLE as TRANSLATABLE_KINDS } from './i18n/languages';
@@ -61,6 +63,11 @@ export interface StageOptions {
   mode?: import('./ai/audioModes').AudioMode;
   persona?: import('./ai/audioModes').Persona;
   revision?: import('./ai/prompts').RevisionKind;
+  /**
+   * THE APPROVED MASTER IS IMMUTABLE IN SUBSTANCE, so writing over something a
+   * person has approved takes a second, explicit act — and costs the approval.
+   */
+  regenerate?: boolean;
 }
 
 export async function runStage(
@@ -96,6 +103,14 @@ export async function runStage(
   }
 
   const previous = existing.find((a) => a.kind === kind);
+
+  // ---- NOTHING WRITES OVER AN APPROVAL WITHOUT SAYING SO ----------------
+  //
+  // A regeneration that quietly replaced approved, published, translated
+  // material would erase a person's approval and nobody would see it happen —
+  // the students would simply be reading something else.
+  const integrity = mayRegenerate(previous, { explicitly: options.regenerate });
+  if (!integrity.allowed) throw new Refused(integrity.reason!);
   const context = {
     courseCode: where.course.code,
     courseTitle: where.course.title,
@@ -122,6 +137,10 @@ export async function runStage(
     correctedByLecturer: false,
   };
 
+  // The approval goes now, not when the new text arrives: a failed run must
+  // not leave the old approval sitting on top of a half-written artefact.
+  const demoted = integrity.clearsApproval ? clearApproval(artefact) : artefact;
+  Object.assign(artefact, demoted);
   artefact.state = 'running';
   artefact.derivedFromId = source!.id;
   artefact.error = undefined;
@@ -235,9 +254,16 @@ export async function runStage(
       mediaPath: artefact.mediaPath,
       authoredBy: artefact.producedBy ?? 'unknown',
       origin: 'ai',
-      note: previous ? 'Regenerated' : 'Generated',
+      note: integrity.clearsApproval
+        ? 'Regenerated after approval — the approval was cleared by it'
+        : previous ? 'Regenerated' : 'Generated',
       createdAt: now(),
     });
+
+    // Everything carried from the old master is now carrying something that
+    // was withdrawn. Marked stale rather than deleted: a student mid-revision
+    // keeps what they have, with a notice on it.
+    if (integrity.clearsApproval) await markStale(store, artefact);
   } catch (error) {
     artefact.state = 'failed';
     artefact.error = error instanceof Error ? error.message : String(error);
@@ -437,7 +463,8 @@ export async function askCourseAI(
 ) {
   const where = await scene(store, courseId, actor.id);
   const teaching = where.course.lecturerIds.includes(actor.id);
-  if (actor.role === 'student' && !where.enrolment) {
+  const open = where.course.access === 'open';
+  if (actor.role === 'student' && !where.enrolment && !open) {
     throw new Refused('This course is not one of yours.');
   }
   if (!teaching && actor.role !== 'student') {
@@ -508,7 +535,9 @@ export async function makeStudyAid(
 ): Promise<StudyAid> {
   const where = await scene(store, courseId, actor.id);
   const teaching = where.course.lecturerIds.includes(actor.id);
-  if (actor.role === 'student' && !where.enrolment) throw new Refused('This course is not one of yours.');
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') {
+    throw new Refused('This course is not one of yours.');
+  }
 
   const courseLanguage = where.course.originalLanguage ?? 'en';
   const lectures = await store.lectures(courseId);
@@ -524,6 +553,42 @@ export async function makeStudyAid(
 
   const span = chosen.map((l) => l.sequence).sort((a, b) => a - b);
   const range = span.length > 1 ? `Lectures ${span[0]}–${span[span.length - 1]}` : `Lecture ${span[0]}`;
+
+  // ---- ONE FRENCH VERSION, NOT TWENTY THOUSAND -------------------------
+  //
+  // A course's study material belongs to the course, not to whoever asked for
+  // it first. If twenty thousand students have French as their working
+  // language, there is one approved French quiz — generated once, translated
+  // once, served to all of them. Regenerating per student would multiply the
+  // cost of the platform by its enrolment and, worse, would give two students
+  // in the same seminar different questions.
+  const wanted = JSON.stringify({
+    kind: brief.kind, lectures: chosen.map((l) => l.id).sort(),
+    questions: brief.questions ?? null, minutes: brief.minutes ?? null,
+  });
+  const sameBrief = (aid: StudyAid) => JSON.stringify({
+    kind: aid.kind, lectures: [...aid.lectureIds].sort(),
+    questions: aid.brief?.questions ?? null, minutes: aid.brief?.minutes ?? null,
+  }) === wanted;
+
+  const shelf = await store.studyAids(courseId);
+  const askedFor = brief.language ?? courseLanguage;
+  // A study aid for a given brief and a given language is the same object
+  // whoever asked for it, so a second student asking gets the first one's —
+  // and the same questions, which matters more than the saving.
+  const alreadyMade = shelf.find((aid) => aid.state !== 'failed'
+    && (aid.language ?? courseLanguage) === askedFor && sameBrief(aid));
+  if (alreadyMade) return alreadyMade;
+
+  // AND IF THE MASTER EXISTS, A NEW LANGUAGE IS A TRANSLATION OF IT — never a
+  // second master. Writing the questions again for the Spanish cohort would
+  // give them a different paper from the French one, which is the whole thing
+  // this route exists to prevent.
+  const existingMaster = shelf.find((aid) => aid.state !== 'failed'
+    && (aid.language ?? courseLanguage) === courseLanguage && !aid.translatedFromId && sameBrief(aid));
+  if (existingMaster && askedFor !== courseLanguage) {
+    return translateStudyAid(store, e, where.course, existingMaster, askedFor);
+  }
   const material = passages.map((p) => `Lecture ${p.lectureSequence} — ${p.lectureTitle}\n${p.text}`).join('\n\n---\n\n');
 
   const ASK: Record<StudyAid['kind'], string> = {
@@ -556,12 +621,11 @@ different question.`,
         brief.kind === 'flashcards' ? 'Flashcards' : 'Summary'} — ${range}`,
     lectureIds: chosen.map((l) => l.id),
     requestedBy: actor.id,
-    // THE APPROVAL LAYER REACHES IN HERE. A lecturer's study aid is course
-    // material and goes through review under their name. A student's is
-    // theirs alone, and is labelled as not reviewed — because machine-made
-    // material circulating in a cohort under a university's name, with no
-    // academic behind it, is the thing this platform exists to prevent.
-    audience: teaching ? 'course' : 'private',
+    // THE APPROVAL LAYER REACHES IN HERE — as a label rather than as a lock.
+    // A lecturer's study aid is course material. A student's is built from the
+    // same published lectures and is shared with the cohort just the same, but
+    // no academic has read it, and every screen that shows it says so.
+    standing: teaching ? 'lecturer-requested' : 'unreviewed',
     state: teaching ? 'ready' : 'ready',
     body: result.text,
     brief: { questions: brief.questions, register: brief.register, minutes: brief.minutes },
@@ -1014,4 +1078,122 @@ export async function languagesOf(store: Store, lectureId: string) {
     seen.set(code, row);
   }
   return [...seen.values()];
+}
+
+/** ---- Enrolment, which is the registry's ---------------------------------- */
+
+/**
+ * Putting a student on a course. The environment side of the line: a lecturer
+ * owns what is taught and does not decide who is taught it.
+ */
+export async function enrol(
+  store: Store, actor: Actor, courseId: string, studentId: string,
+): Promise<Enrolment> {
+  if (!can(actor.role, 'manage-enrolment')) {
+    throw new Refused('Enrolment is held by the registry.');
+  }
+  const course = await store.course(courseId);
+  if (!course) throw new Refused('No such course.');
+  const student = await store.person(studentId);
+  if (!student) throw new Refused('No such student.');
+
+  const existing = await store.enrolmentFor(courseId, studentId);
+  return store.saveEnrolment({
+    id: existing?.id ?? randomUUID(),
+    courseId,
+    studentId,
+    status: 'registered',
+  });
+}
+
+/** ---- The learning profile ---------------------------------------------- */
+
+/**
+ * A STUDENT'S WORKING LANGUAGE IS CHANGED BY THE REGISTRY, WITH A REASON.
+ *
+ * Not because a student cannot be trusted, but because a term studied in one
+ * language is a term studied once: hopping between languages mid-course leaves
+ * a student revising from four half-remembered versions of one lecture, and
+ * quoting a sentence in an examination that their lecturer never said in that
+ * language. The change is recorded with who made it and why, because a student
+ * whose course is suddenly in Portuguese is owed that answer.
+ */
+export async function setWorkingLanguage(
+  store: Store, actor: Actor, personId: string, language: string, reason: string,
+): Promise<Person> {
+  if (!can(actor.role, 'set-working-language')) {
+    throw new Refused('Your working language is changed by the registry, so that a term is studied in one language.');
+  }
+  if (!LANGUAGE_BY_CODE[language]) throw new Refused(`This platform is not set up for ${language}.`);
+  if (!reason.trim()) throw new Refused('Say why. A change nobody can account for is one nobody can undo.');
+
+  const person = await store.person(personId);
+  if (!person) throw new Refused('No such person.');
+  const actorPerson = await store.person(actor.id);
+
+  const updated: Person = {
+    ...person,
+    workingLanguage: language,
+    workingLanguageHistory: [
+      ...(person.workingLanguageHistory ?? []),
+      {
+        from: person.workingLanguage, to: language,
+        by: actor.id, byName: actorPerson?.name, reason: reason.trim(), at: now(),
+      },
+    ],
+  };
+  return store.savePerson(updated);
+}
+
+/**
+ * VOICE AND SPEED ARE THE STUDENT'S OWN. They change how the audio sounds and
+ * nothing about what it says, so they need no ceremony at all.
+ */
+export async function setListeningPreference(
+  store: Store, actor: Actor, preference: { voice?: string; speed?: number },
+): Promise<Person> {
+  const person = await store.person(actor.id);
+  if (!person) throw new Refused('No such person.');
+  return store.savePerson({
+    ...person,
+    voicePreference: preference.voice ?? person.voicePreference,
+    audioSpeed: preference.speed ?? person.audioSpeed,
+  });
+}
+
+/**
+ * A LECTURER AUTHORISING THEIR OWN VOICE — and nobody else may do it for them.
+ *
+ * A voice is a person. Synthesising one without consent is impersonation, and
+ * it is the single act in this platform that withdrawing a page cannot undo.
+ * So: the capability is the lecturer's alone, the scope is narrow by default,
+ * the agreement is dated, and revoking it is one call that is honoured
+ * everywhere the voice would otherwise be used.
+ */
+export async function authoriseOwnVoice(
+  store: Store, actor: Actor,
+  authorisation: { scope: 'translated-audio' | 'all-audio'; note?: string },
+): Promise<Person> {
+  if (!can(actor.role, 'authorise-own-voice')) {
+    throw new Refused('Only the person whose voice it is can authorise its use.');
+  }
+  const person = await store.person(actor.id);
+  if (!person) throw new Refused('No such person.');
+  return store.savePerson({
+    ...person,
+    voiceConsent: { authorisedAt: now(), scope: authorisation.scope, note: authorisation.note },
+  });
+}
+
+export async function revokeOwnVoice(store: Store, actor: Actor): Promise<Person> {
+  const person = await store.person(actor.id);
+  if (!person) throw new Refused('No such person.');
+  if (!person.voiceConsent) return person;
+  // KEPT, NOT DELETED. "They authorised it in March and withdrew it in June"
+  // is a fact the university may one day need; and `consentHolds` reads
+  // `revokedAt` at listening time, so audio already made stops being offered.
+  return store.savePerson({
+    ...person,
+    voiceConsent: { ...person.voiceConsent, revokedAt: now() },
+  });
 }

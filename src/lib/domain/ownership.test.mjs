@@ -82,6 +82,17 @@ t.check('…and not a draft', may(student, 'read', { state: 'ready' }, { enrolme
 // the material may be for a lecture they have not given.
 t.check('…and not an approved one the lecturer has not released', may(student, 'read', { state: 'approved' }, { enrolment: enrolled }), false);
 t.check('…a student not on the course reads nothing', may(stranger, 'read', { state: 'published' }, { enrolment: null }), false);
+// AN OPEN COURSE IS OPEN — a university publishing internationally, or
+// continuing education. Everything else holds: they read what was published
+// and nothing that was not.
+t.check('…unless the course is open',
+  may(stranger, 'read', { state: 'published' }, { enrolment: null, course: { access: 'open' } }), true);
+t.check('…and even then, not a draft',
+  may(stranger, 'read', { state: 'ready' }, { enrolment: null, course: { access: 'open' } }), false);
+// A PAID COURSE IS NOT OPEN. Payment is not built, so it behaves as enrolment
+// does — which is the safe direction for a distinction that has no checkout.
+t.check('…and a paid course is not open',
+  may(stranger, 'read', { state: 'published' }, { enrolment: null, course: { access: 'paid' } }), false);
 t.check('…a withdrawn student reads nothing', may(student, 'read', { state: 'published' }, { enrolment: { ...enrolled, status: 'withdrawn' } }), false);
 t.check('…and no student edits anything', may(student, 'edit', { state: 'published' }, { enrolment: enrolled }), false);
 

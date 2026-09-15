@@ -216,7 +216,14 @@ export const DEMO: Snapshot = {
   }],
   people: [
     { id: LECTURER, name: 'Dr Amara Okonjo', email: 'a.okonjo@example.edu', role: 'lecturer' },
-    { id: 'person-student', name: 'Joseph Adeyemi', email: 'j.adeyemi@example.edu', role: 'student' },
+    {
+      id: 'person-student', name: 'Joseph Adeyemi', email: 'j.adeyemi@example.edu', role: 'student',
+      // HIS WHOLE ACADEMIC ENVIRONMENT IS IN FRENCH. Not a switcher he fiddles
+      // with per course: notes, audio, quizzes and the Course AI all arrive in
+      // it, and the registry changes it with a reason if it ever changes.
+      workingLanguage: 'fr',
+      audioSpeed: 1,
+    },
     { id: 'person-registry', name: 'Registry Office', email: 'registry@example.edu', role: 'registry' },
     // Reads Arabic and French, and vouches for what the translations say. Not
     // a second author: they cannot touch the lecturer's original.

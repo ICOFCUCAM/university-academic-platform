@@ -109,6 +109,34 @@ export interface Course {
   originalLanguage?: string;
   /** Languages this course is offered in besides the original. */
   offeredLanguages?: string[];
+  /**
+   * WHO MAY READ WHAT HAS BEEN PUBLISHED.
+   *
+   *   enrolled  the cohort, and nobody else. A taught course.
+   *   open      anybody signed in. An open course, continuing education, a
+   *             university publishing internationally.
+   *   paid      the cohort, where enrolment was bought. Payment is NOT built
+   *             — this behaves exactly like `enrolled` and is here so the
+   *             distinction exists in the data before it exists in a checkout.
+   *
+   * Access is the environment's, like enrolment: a lecturer decides what is
+   * published, the institution decides who may see it.
+   */
+  access?: 'enrolled' | 'open' | 'paid';
+  price?: { amount: number; currency: string };
+  /**
+   * Other publishers whose students may take this course — a partnership, a
+   * shared library, a consortium. The federation that would synchronise them
+   * is not built; this records the intent.
+   */
+  partners?: string[];
+  /**
+   * The voice this course is spoken in by default, where the lecturer has set
+   * one, and the voices they permit on it. A student still chooses among what
+   * is available to them — voice is how a lesson sounds, not what it says.
+   */
+  defaultVoice?: string;
+  allowedVoices?: string[];
   /** The university opens and closes the course; a lecturer never does. */
   status: 'draft' | 'running' | 'archived';
 }
@@ -118,6 +146,41 @@ export interface Person {
   name: string;
   email?: string;
   role: import('../capabilities').Role;
+
+  // ---- THE STUDENT'S LEARNING PROFILE ------------------------------------
+  //
+  //   WORKING LANGUAGE — one, chosen when they join, and the whole academic
+  //   environment arrives in it: notes, transcript, audio, quizzes,
+  //   flashcards, the Course AI and the interface. There is no language
+  //   switcher inside a course. A student hopping between languages mid-term
+  //   revises from four half-remembered versions of one lecture, and the
+  //   platform should not offer that as a convenience.
+  //
+  //   Changing it is an administrative act, not a click — see
+  //   `service.setWorkingLanguage`.
+  workingLanguage?: string;
+
+  /**
+   * VOICE IS A DIFFERENT LAYER. It changes how the audio is spoken and nothing
+   * about what is said, so it is the student's to change whenever they like.
+   */
+  voicePreference?: string;
+  audioSpeed?: number;
+
+  /**
+   * A LECTURER'S AUTHORISATION FOR THEIR OWN VOICE. Absent means no, and no is
+   * the default for everybody, forever, until they say otherwise themselves.
+   */
+  voiceConsent?: import('../voice/voices').VoiceConsent;
+
+  /**
+   * Every change of working language, with who made it and why. A student who
+   * finds their course in a different language next Monday is owed an answer
+   * to "who did that, and when".
+   */
+  workingLanguageHistory?: {
+    from?: string; to: string; by: string; byName?: string; reason: string; at: string;
+  }[];
 }
 
 export interface Enrolment {
@@ -360,7 +423,21 @@ export interface StudyAid {
   /** Which lectures it draws on. "Lectures 1–6" is the student's own ask. */
   lectureIds: string[];
   requestedBy: string;
-  audience: 'course' | 'private';
+  /**
+   * WHO STANDS BEHIND IT — which is not the same question as who may see it.
+   *
+   * Everything here is built from material the lecturer already published, so
+   * there is nothing personal in it and no reason to hide one student's quiz
+   * from another. What differs is standing: a lecturer asked for this one and
+   * it is course material; a student asked for that one and no academic has
+   * read it, which is said on its face every time it is shown.
+   *
+   * IT IS ALSO WHY ONE FRENCH QUIZ SERVES TWENTY THOUSAND FRENCH STUDENTS.
+   * Were a student's quiz private to them, the platform would generate the
+   * same questions twenty thousand times — and two students in one seminar
+   * would be revising from different papers.
+   */
+  standing: 'lecturer-requested' | 'unreviewed';
   state: ArtefactState;
   body?: string;
   mediaPath?: string;

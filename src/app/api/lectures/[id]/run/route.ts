@@ -13,6 +13,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
   try {
     const artefact = await runStage(store, engine(), actor, params.id, body.kind, {
       mode: body.mode, persona: body.persona, revision: body.revision,
+      // The approved master is immutable in substance: writing over it takes a
+      // second, explicit act, and the service refuses without this.
+      regenerate: body.regenerate === true,
     });
     // A transformation failure is recorded ON the artefact, not thrown: the
     // lecturer has to be able to read what the model actually said.
