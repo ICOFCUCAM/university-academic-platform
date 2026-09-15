@@ -140,11 +140,27 @@ Lecture 08 → Approved master v3 → French translation v2 → Notes v2
 
 `docs/DELIVERY.md` is the map. V1 recorded multilingual lectures, V2
 multilingual playback, V3 the lecturer's authorised voice: built, except that
-no cloning vendor is wired. **V4 live translated audio and V5 live translated
-video with lip synchronisation: not built at all** — no transport, no streaming
-transcription, no live translation, no lip-sync, and no vendor evaluated for
-any of it. Candidates have been named in conversation; none has been run here,
-and this environment has never held a key for one.
+no cloning vendor is wired.
+
+**V4 — the platform's half is built.** `src/lib/live/` and
+`/courses/[id]/live`: a room a lecturer opens, whose carried languages are
+taken from the working languages of the people enrolled rather than chosen;
+segments carried one at a time through term protection, translation,
+restoration and validation; **refusal rather than reporting**, with the
+fallback decided (`floor` by default — the student hears the lecturer's own
+words for that stretch and is told why); delivery in order or not at all, with
+a late segment dropped and a refusal not treated as a hole; persistence and
+row-level security; and `closeLive` leaving a recording and a lecture that then
+go through the ordinary pipeline, because **a live stream is a delivery, never
+a version**.
+
+**What V4 still needs, and none of it is written**: a streaming transcriber —
+the lecturer's words are typed in where a microphone will be — a live
+translator, a live speech service, and WebRTC transport. `ACADEMIC_LIVE=rehearsal`
+runs a stand-in that marks everything it produces and reports `live: false`;
+unset, the room refuses by name. **V5 is not built at all**: no video, no
+lip-sync, no vendor evaluated. Candidates have been named in conversation; none
+has been run here.
 
 Two things that page settles rather than leaves open, because they are
 decisions and not engineering:

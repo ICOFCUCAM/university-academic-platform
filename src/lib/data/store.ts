@@ -25,6 +25,7 @@ import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { Recall } from '../study/repetition';
 import type { AuditEntry } from '../audit/audit';
+import type { CarriedSegment, LiveSegment, LiveSession } from '../live/types';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -90,6 +91,19 @@ export interface Store {
    */
   recalls(personId: string, studyAidId?: string): Promise<Recall[]>;
   saveRecall(recall: Recall): Promise<Recall>;
+
+  /**
+   * A lecture being given. Segments are append-only and carried segments are
+   * one row per segment per language — nothing here is ever published as an
+   * artefact: a live stream is a delivery, never a version. See live/types.ts.
+   */
+  liveSessions(courseId?: string): Promise<LiveSession[]>;
+  liveSession(id: string): Promise<LiveSession | null>;
+  saveLiveSession(session: LiveSession): Promise<LiveSession>;
+  liveSegments(sessionId: string): Promise<LiveSegment[]>;
+  saveLiveSegment(segment: LiveSegment): Promise<LiveSegment>;
+  carriedSegments(sessionId: string, language?: string): Promise<CarriedSegment[]>;
+  saveCarried(carried: CarriedSegment): Promise<CarriedSegment>;
 
   /** What each run cost, and what each account has processed. */
   costs(courseId: string): Promise<RunCost[]>;

@@ -27,6 +27,7 @@ import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { Voice } from '../voice/voices';
 import type { AuditEntry } from '../audit/audit';
+import type { CarriedSegment, LiveSegment, LiveSession } from '../live/types';
 import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
@@ -294,6 +295,25 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         : q.eq('study_aid_id', studyAidId))) as unknown as QuizAttempt[];
     },
     async saveAttempt(attempt) { await upsert('ls_quiz_attempts', attempt as unknown as Row); return attempt; },
+
+    async liveSessions(courseId) {
+      return (await rows('ls_live_sessions', (q) => courseId
+        ? q.eq('course_id', courseId) : q)) as unknown as LiveSession[];
+    },
+    async liveSession(id) { return (await one('ls_live_sessions', id)) as unknown as LiveSession | null; },
+    async saveLiveSession(session) { await upsert('ls_live_sessions', session as unknown as Row); return session; },
+    async liveSegments(sessionId) {
+      const found = (await rows('ls_live_segments', (q) => q.eq('session_id', sessionId))) as unknown as LiveSegment[];
+      return found.sort((a, b) => a.sequence - b.sequence);
+    },
+    async saveLiveSegment(segment) { await upsert('ls_live_segments', segment as unknown as Row); return segment; },
+    async carriedSegments(sessionId, language) {
+      const found = (await rows('ls_live_carried', (q) => language
+        ? q.eq('session_id', sessionId).eq('language', language)
+        : q.eq('session_id', sessionId))) as unknown as CarriedSegment[];
+      return found.sort((a, b) => a.sequence - b.sequence);
+    },
+    async saveCarried(carried) { await upsert('ls_live_carried', carried as unknown as Row); return carried; },
 
     async auditEntries(courseId) {
       // `seq` is the table's own bigserial: it breaks a tie between two acts

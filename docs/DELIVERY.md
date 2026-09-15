@@ -21,7 +21,7 @@ page exists so that nobody reads an architecture diagram as a feature list.
 | **V1** | Recorded lecture → approved master → notes, script, revision | **Built** |
 | **V2** | Multilingual playback — one approved master, one version per language | **Built** |
 | **V3** | Lecturer-authorised voice | **Consent built and enforced; no cloning vendor wired** |
-| **V4** | Live translated audio over a live lecture | **Not built** |
+| **V4** | Live translated audio over a live lecture | **The platform's half is built; no vendor is wired** |
 | **V5** | Live translated video with AI lip synchronisation | **Not built** |
 
 The order is not a guess about difficulty. It is the order in which each stage
@@ -81,6 +81,18 @@ two that are not built — hangs off it, which is why the work went here first.
 ## V4 — live translated audio
 
 The lecturer speaks; a student hears their own working language.
+
+**What is built** (`src/lib/live/`, `/courses/[id]/live`): the room, the
+segment pipeline with term protection and validation, the refusal policy, the
+ordering rule, the persistence and the row-level security, and the screen where
+a lecturer gives a lecture and a student follows it in their own language.
+
+**What is not**: a streaming transcriber (the lecturer's words are typed in
+where a microphone will be), a live translator, a live speech service, WebRTC
+transport, and video of any kind. `ACADEMIC_LIVE=rehearsal` runs a stand-in
+that marks everything it produces and reports `live: false`, so a demonstration
+can be walked through without anybody being shown a translation that no
+translator made. Unset, the room refuses by name.
 
 ```
 🎥 CAMERA
@@ -258,10 +270,24 @@ guards matter more rather than less:
   `Yahusha HaMashiach`. The markers go in before the model sees the text and
   come out after, exactly as `ai/terminology.ts` does today.
 - **Validation still rejects.** A substituted term is not a note for somebody
-  to weigh later; the segment does not go out. What a student hears instead —
-  the original audio for that stretch, silence, or a spoken notice — is a
-  product decision that has to be made before V4 ships, and it must be made
-  deliberately rather than discovered.
+  to weigh later; the segment does not go out. What a student hears instead was
+  a decision this document said had to be made before V4 shipped, and it is now
+  made, in `live/types.ts`:
+
+  | | |
+  |---|---|
+  | `floor` | **the default.** They hear the lecturer's own words, in the floor language, for that stretch — the lecturer's actual speech is never the wrong thing to play |
+  | `silence` | nothing, for a room where an unexpected language is worse than a gap |
+  | `notice` | a short line saying the translation was withheld |
+
+  In every case the listener is **told, in their own language, on the screen**.
+  A gap nobody explains is read as a fault in the platform, and a student who
+  thinks the platform is broken stops using it.
+
+- **A late segment is dropped, never played.** Carrying runs in parallel
+  because it has to, so segments finish out of order; a listener is given the
+  longest run contiguous from where they are, and anything past a hole waits.
+  A refusal is not a hole — it has an answer, and the run continues through it.
 - **Nothing live becomes a master.** A live translated stream is a delivery of
   the lecture, not a version of it. The master is still what the lecturer
   approves afterwards, and the recorded pipeline still runs.

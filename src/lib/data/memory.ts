@@ -17,6 +17,7 @@ import type {
 import type { ProgressRecord } from '../study/progress';
 import type { Recall } from '../study/repetition';
 import type { AuditEntry } from '../audit/audit';
+import type { CarriedSegment, LiveSegment, LiveSession } from '../live/types';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -39,6 +40,9 @@ export interface Snapshot {
   attempts: QuizAttempt[];
   recalls: Recall[];
   audit: AuditEntry[];
+  liveSessions: LiveSession[];
+  liveSegments: LiveSegment[];
+  carried: CarriedSegment[];
   costs: RunCost[];
   usage: UsageRecord[];
   notifications: Notification[];
@@ -206,6 +210,43 @@ export function createMemoryStore(initial: Snapshot): Store {
     async recordCost(cost) { db.costs.push(cost); save(); },
     async usage(personId) { return clone(db.usage.filter((u) => u.personId === personId)); },
     async recordUsage(record) { db.usage.push(record); save(); },
+
+    async liveSessions(courseId) {
+      return clone((db.liveSessions ?? []).filter((l) => !courseId || l.courseId === courseId));
+    },
+    async liveSession(id) {
+      return clone((db.liveSessions ?? []).find((l) => l.id === id) ?? null);
+    },
+    async saveLiveSession(session) {
+      db.liveSessions = db.liveSessions ?? [];
+      const at = db.liveSessions.findIndex((l) => l.id === session.id);
+      if (at >= 0) db.liveSessions[at] = session; else db.liveSessions.push(session);
+      save();
+      return clone(session);
+    },
+    async liveSegments(sessionId) {
+      return clone((db.liveSegments ?? []).filter((s) => s.sessionId === sessionId)
+        .sort((a, b) => a.sequence - b.sequence));
+    },
+    async saveLiveSegment(segment) {
+      db.liveSegments = db.liveSegments ?? [];
+      db.liveSegments.push(segment);
+      save();
+      return clone(segment);
+    },
+    async carriedSegments(sessionId, language) {
+      return clone((db.carried ?? []).filter((c) => c.sessionId === sessionId
+        && (!language || c.language === language)).sort((a, b) => a.sequence - b.sequence));
+    },
+    async saveCarried(carried) {
+      db.carried = db.carried ?? [];
+      // One row per segment per language: carrying it again rewrites it.
+      const at = db.carried.findIndex((c) => c.segmentId === carried.segmentId
+        && c.language === carried.language);
+      if (at >= 0) db.carried[at] = carried; else db.carried.push(carried);
+      save();
+      return clone(carried);
+    },
 
     async auditEntries(courseId) {
       // NEWEST FIRST, AND APPEND ORDER BREAKS A TIE. Two acts in the same

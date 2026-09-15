@@ -19,7 +19,7 @@ import type {
   Artefact, ArtefactKind, ArtefactVersion, Assignment, Course, Enrolment, Lecture,
   Person, QuizAttempt, Reading, Register, StudyAid, Submission, University,
 } from './domain/types';
-import { isEnrolled, mayAct, type Actor } from './domain/ownership';
+import { isEnrolled, mayAct, mayEnterCourse, type Actor } from './domain/ownership';
 import { can } from './capabilities';
 import { buildKnowledgeBase, emptyKnowledgeBase } from './knowledge/build';
 import type { CourseKnowledgeBase } from './knowledge/types';
@@ -47,6 +47,9 @@ import { mark, parseQuiz } from './study/quiz';
 import { PLATFORM_VOICES } from './voice/voices';
 import { settingsOf, type AccessibilitySettings } from './access/accessibility';
 import { isAudited, visibleTo, type AuditAct, type AuditEntry } from './audit/audit';
+import { carrySegment, hear, playable } from './live/carry';
+import type { LiveEngine } from './live/engine';
+import type { CarriedSegment, FallbackPolicy, LiveSegment, LiveSession } from './live/types';
 import { parseFlashcards } from './study/flashcards';
 import { cardKey, holding, schedule, session, type Recall } from './study/repetition';
 import type { Engine } from './ai/provider';
@@ -2193,6 +2196,231 @@ export async function issueCertificate(
     detail: certificate.code,
   });
   return certificate;
+}
+
+/** ---- V4: a lecture being given ------------------------------------------
+ *
+ * `docs/DELIVERY.md` is the map. What is enforced here:
+ *
+ *   A LIVE STREAM IS A DELIVERY, NEVER A VERSION. Nothing said in a live room
+ *   becomes a published artefact. `closeLive` leaves a recording and a lecture,
+ *   and that recording enters the ordinary pipeline — cleanup, LECTURER
+ *   REVIEW, approval — so the course still holds only what its lecturer
+ *   approved. A student heard the lecture; the course did not gain a master.
+ *
+ *   THE ROOM CARRIES WHAT THE COHORT READS. The languages are taken from the
+ *   working languages of the people enrolled, not chosen by the lecturer, and
+ *   nobody picks a language during a lecture.
+ *
+ *   AND THE TERMINOLOGY LAYER REJECTS RATHER THAN REPORTS, because live there
+ *   is nobody reading the output before a student hears it.
+ */
+
+export async function openLive(
+  store: Store, actor: Actor, courseId: string,
+  input: { title: string; fallback?: FallbackPolicy },
+): Promise<LiveSession> {
+  const where = await scene(store, courseId, actor.id);
+  if (!where.course.lecturerIds.includes(actor.id) || !can(actor.role, 'upload-source-material')) {
+    throw new Refused('A lecture is given by the people who teach the course.');
+  }
+  if (!input.title.trim()) throw new Refused('A live lecture needs a title, so it can be found afterwards.');
+
+  const running = (await store.liveSessions(courseId)).find((l) => l.state === 'running');
+  if (running) throw new Refused('This course already has a lecture in progress.');
+
+  // THE LANGUAGES ARE THE COHORT'S. A room that carried whatever the lecturer
+  // selected would leave out the student whose account says Swahili.
+  const floorLanguage = where.course.originalLanguage ?? 'en';
+  const enrolments = await store.enrolments(courseId);
+  const people = await store.people();
+  const languages = [...new Set(enrolments
+    .filter((e) => e.status === 'registered')
+    .map((e) => people.find((p) => p.id === e.studentId)?.workingLanguage)
+    .filter((code): code is string => !!code && code !== floorLanguage))];
+
+  return store.saveLiveSession({
+    id: randomUUID(),
+    courseId,
+    title: input.title.trim(),
+    lecturerId: actor.id,
+    floorLanguage,
+    languages,
+    state: 'running',
+    startedAt: now(),
+    fallback: input.fallback ?? 'floor',
+  });
+}
+
+/**
+ * One stretch of speech, heard on the floor and carried into every language the
+ * room owes. Returns what each language got, so a lecturer can see a refusal
+ * happen rather than learning about it afterwards.
+ */
+export async function speakIntoLive(
+  store: Store, engine: LiveEngine, actor: Actor, sessionId: string,
+  said: { heard: string; seconds: number },
+): Promise<{ segment: LiveSegment; carried: CarriedSegment[] }> {
+  const session = await store.liveSession(sessionId);
+  if (!session) throw new Refused('No such live lecture.');
+  if (session.state !== 'running') throw new Refused('That lecture is not in progress.');
+  if (session.lecturerId !== actor.id) {
+    throw new Refused('Only the person giving the lecture speaks into it.');
+  }
+
+  const existing = await store.liveSegments(sessionId);
+  const segment = await store.saveLiveSegment({
+    id: randomUUID(),
+    sessionId,
+    sequence: existing.length + 1,
+    heard: said.heard,
+    spokenAt: now(),
+    seconds: said.seconds,
+  });
+
+  const course = await store.course(session.courseId);
+  const carried: CarriedSegment[] = [];
+
+  for (const language of session.languages) {
+    const outcome = await carrySegment(engine, segment, {
+      language,
+      floorLanguage: session.floorLanguage,
+      glossary: course?.terminology,
+      voice: course?.defaultVoice,
+    });
+    carried.push(await store.saveCarried({
+      id: randomUUID(),
+      segmentId: segment.id,
+      sessionId,
+      sequence: segment.sequence,
+      language,
+      state: outcome.state,
+      text: outcome.text,
+      mediaPath: outcome.mediaPath,
+      refusal: outcome.refusal,
+      timing: {
+        heardAt: segment.spokenAt,
+        readyAt: outcome.state === 'ready' ? now() : undefined,
+        msTranslate: outcome.timing.msTranslate,
+        msSpeak: outcome.timing.msSpeak,
+      },
+    }));
+  }
+
+  return { segment, carried };
+}
+
+/**
+ * What one listener has to play, from where they are. In order or not at all:
+ * a run that is contiguous from their position, stopping at anything still
+ * being carried — and continuing through a refusal, which has an answer.
+ */
+export async function followLive(
+  store: Store, actor: Actor, sessionId: string, from = 1,
+) {
+  const session = await store.liveSession(sessionId);
+  if (!session) throw new Refused('No such live lecture.');
+
+  const where = await scene(store, session.courseId, actor.id);
+  if (!mayEnterCourse(actor, where.course, where.enrolment)) {
+    throw new Refused('This course is not one of yours.');
+  }
+
+  const person = await store.person(actor.id);
+  const language = person?.workingLanguage ?? session.floorLanguage;
+  const onTheFloor = language === session.floorLanguage;
+
+  const [segments, carried] = await Promise.all([
+    store.liveSegments(sessionId),
+    onTheFloor ? Promise.resolve([]) : store.carriedSegments(sessionId, language),
+  ]);
+  const floorBySequence = new Map(segments.map((s) => [s.sequence, s]));
+
+  // A LISTENER ON THE FLOOR IS NOT LISTENING TO A TRANSLATION, and must not be
+  // shown one: they get what was said.
+  if (onTheFloor) {
+    return {
+      language,
+      carriedByThePlatform: false,
+      heard: segments.filter((s) => s.sequence >= from).map((s) => ({
+        sequence: s.sequence, language, source: 'floor' as const, text: s.heard,
+      })),
+    };
+  }
+
+  return {
+    language,
+    carriedByThePlatform: true,
+    heard: playable(carried, from).map((c) => hear(c, {
+      fallback: session.fallback,
+      floor: { text: floorBySequence.get(c.sequence)?.heard ?? '' },
+    })),
+  };
+}
+
+/**
+ * The lecture ends. It leaves a RECORDING AND A LECTURE — not notes, not a
+ * transcript anybody approved, and not one word of published material.
+ * Everything a student will revise from still has to come through the ordinary
+ * pipeline with the lecturer reading it, which is the whole architecture and
+ * is not suspended because the lecture happened to be live.
+ */
+export async function closeLive(
+  store: Store, actor: Actor, sessionId: string,
+): Promise<{ session: LiveSession; lecture: Lecture }> {
+  const session = await store.liveSession(sessionId);
+  if (!session) throw new Refused('No such live lecture.');
+  if (session.lecturerId !== actor.id) {
+    throw new Refused('The lecture is ended by the person giving it.');
+  }
+  if (session.state !== 'running') throw new Refused('That lecture has already ended.');
+
+  const existing = await store.lectures(session.courseId);
+  const segments = await store.liveSegments(sessionId);
+  const spokenSeconds = segments.reduce((total, s) => total + s.seconds, 0);
+
+  const lecture = await store.saveLecture({
+    id: randomUUID(),
+    context: 'course',
+    courseId: session.courseId,
+    sequence: existing.length + 1,
+    title: session.title,
+    ownerId: actor.id,
+    createdBy: actor.id,
+    createdAt: now(),
+    sourceMinutes: Math.max(1, Math.round(spokenSeconds / 60)),
+  });
+
+  // The floor recording, and nothing else. `state: 'ready'` rather than
+  // published: a recording of a lecture is the lecturer's to release.
+  await store.saveArtefact({
+    id: randomUUID(),
+    lectureId: lecture.id,
+    courseId: session.courseId,
+    kind: 'recording',
+    origin: 'lecturer',
+    ownerId: actor.id,
+    state: session.mediaPath ? 'ready' : 'absent',
+    derivedFromId: null,
+    mediaPath: session.mediaPath,
+    mediaSeconds: spokenSeconds || undefined,
+    producedBy: 'given live',
+    language: session.floorLanguage,
+    version: 1,
+    correctedByLecturer: false,
+    createdAt: now(),
+    updatedAt: now(),
+  });
+
+  const ended = await store.saveLiveSession({
+    ...session, state: 'ended', endedAt: now(), lectureId: lecture.id,
+  });
+
+  await tell(store, actor.id, 'awaiting-review',
+    `${session.title} — the live lecture has ended and its recording is waiting`,
+    `/lectures/${lecture.id}`);
+
+  return { session: ended, lecture };
 }
 
 /** ---- Where a sentence came from ---------------------------------------

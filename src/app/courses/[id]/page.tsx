@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText, Search, SlidersHorizontal } from 'lucide-react';
+import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, Radio, ScrollText, Search, SlidersHorizontal } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
@@ -56,6 +56,12 @@ export default async function CoursePage({ params }: { params: { id: string } })
         lang={course.originalLanguage ?? 'en'}
         actions={(
           <>
+            <Link
+              href={`/courses/${course.id}/live`}
+              className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+            >
+              <Radio size={16} /> Live
+            </Link>
             <Link
               href={`/courses/${course.id}/search`}
               className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"

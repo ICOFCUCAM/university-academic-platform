@@ -208,6 +208,54 @@ create index if not exists ls_progress_by_course on ls_progress (course_id);
 -- nothing in it records reading: see src/lib/audit/audit.ts, where the list of
 -- auditable acts is closed and a test holds it against the words that would
 -- mean somebody's reading was being kept.
+-- A LECTURE BEING GIVEN. Nothing in these three tables is ever published: a
+-- live stream is a delivery of a lecture, never a version of it, and what a
+-- student revises from comes out of ls_artefacts after a lecturer has read it.
+-- See src/lib/live/types.ts.
+create table if not exists ls_live_sessions (
+  id              uuid primary key default gen_random_uuid(),
+  course_id       uuid not null references courses (id) on delete cascade,
+  lecture_id      uuid references ls_lectures (id) on delete set null,
+  title           text not null,
+  lecturer_id     uuid not null references auth.users (id),
+  floor_language  text not null,
+  languages       text[] not null default '{}',
+  state           text not null check (state in ('scheduled', 'running', 'ended', 'abandoned')),
+  started_at      timestamptz,
+  ended_at        timestamptz,
+  fallback        text not null default 'floor' check (fallback in ('floor', 'silence', 'notice')),
+  media_path      text
+);
+
+create table if not exists ls_live_segments (
+  id          uuid primary key default gen_random_uuid(),
+  session_id  uuid not null references ls_live_sessions (id) on delete cascade,
+  sequence    integer not null,
+  heard       text not null,
+  spoken_at   timestamptz not null default now(),
+  seconds     numeric(8,2) not null,
+  unique (session_id, sequence)
+);
+
+-- One row per segment per language. `state` carries the refusals: a segment
+-- whose translation substituted one of the lecturer's terms is 'refused' and
+-- is never played.
+create table if not exists ls_live_carried (
+  id          uuid primary key default gen_random_uuid(),
+  segment_id  uuid not null references ls_live_segments (id) on delete cascade,
+  session_id  uuid not null references ls_live_sessions (id) on delete cascade,
+  sequence    integer not null,
+  language    text not null,
+  state       text not null check (state in ('heard', 'carrying', 'ready', 'refused', 'late', 'failed')),
+  text        text,
+  media_path  text,
+  refusal     text,
+  timing      jsonb,
+  unique (segment_id, language)
+);
+
+create index if not exists ls_live_carried_by_session on ls_live_carried (session_id, language, sequence);
+
 create table if not exists ls_audit (
   id          uuid primary key default gen_random_uuid(),
   seq         bigserial,
@@ -384,6 +432,9 @@ alter table ls_progress            enable row level security;
 alter table ls_recalls             enable row level security;
 alter table ls_settings            enable row level security;
 alter table ls_audit               enable row level security;
+alter table ls_live_sessions       enable row level security;
+alter table ls_live_segments       enable row level security;
+alter table ls_live_carried        enable row level security;
 alter table ls_readings            enable row level security;
 alter table ls_assignments         enable row level security;
 alter table ls_submissions         enable row level security;
@@ -437,6 +488,35 @@ create policy ls_attempts_own on ls_quiz_attempts for all
 -- their own rows; a lecturer reads none of them and uses ls_cohort_shape.
 create policy ls_progress_own on ls_progress for all
   using (person_id = auth.uid()) with check (person_id = auth.uid());
+
+-- A LIVE ROOM IS READ BY THE PEOPLE ON THE COURSE and written only by whoever
+-- teaches it — the same line as everywhere else, with the addition that a
+-- student on the course may read the carried segments for their own language
+-- because that is what listening to the lecture is.
+create policy ls_live_read on ls_live_sessions for select
+  using (ls_teaches_course(course_id) or ls_enrolled_on(course_id));
+create policy ls_live_write on ls_live_sessions for all
+  using (ls_teaches_course(course_id)) with check (ls_teaches_course(course_id));
+
+create policy ls_live_segments_read on ls_live_segments for select
+  using (exists (select 1 from ls_live_sessions s
+                  where s.id = session_id
+                    and (ls_teaches_course(s.course_id) or ls_enrolled_on(s.course_id))));
+create policy ls_live_segments_write on ls_live_segments for all
+  using (exists (select 1 from ls_live_sessions s
+                  where s.id = session_id and ls_teaches_course(s.course_id)))
+  with check (exists (select 1 from ls_live_sessions s
+                       where s.id = session_id and ls_teaches_course(s.course_id)));
+
+create policy ls_live_carried_read on ls_live_carried for select
+  using (exists (select 1 from ls_live_sessions s
+                  where s.id = session_id
+                    and (ls_teaches_course(s.course_id) or ls_enrolled_on(s.course_id))));
+create policy ls_live_carried_write on ls_live_carried for all
+  using (exists (select 1 from ls_live_sessions s
+                  where s.id = session_id and ls_teaches_course(s.course_id)))
+  with check (exists (select 1 from ls_live_sessions s
+                       where s.id = session_id and ls_teaches_course(s.course_id)));
 
 -- WHOEVER TEACHES A COURSE READS THAT COURSE'S ACTS, because they were done to
 -- their material. The institution's own acts — a working language moved, the

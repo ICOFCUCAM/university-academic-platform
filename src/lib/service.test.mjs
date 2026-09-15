@@ -212,6 +212,72 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('A lecture given live — and what it does not become');
+{
+  const store = fresh();
+  const L = await load('live/engine.ts');
+  const room = L.rehearsalEngine();
+
+  await t.refuses('a student cannot open a live lecture',
+    () => S.openLive(store, student, 'course-biol101', { title: 'Mine now' }));
+
+  const session = await S.openLive(store, lecturer, 'course-biol101', { title: 'Photosynthesis, live' });
+  t.check('the floor is the course’s own language', session.floorLanguage, 'en');
+  // THE LANGUAGES ARE THE COHORT'S, not the lecturer's selection: the one
+  // enrolled student reads French, so the room owes French.
+  t.check('…and the room carries what the cohort reads', session.languages, ['fr']);
+
+  await t.refuses('a second room on the same course is refused',
+    () => S.openLive(store, lecturer, 'course-biol101', { title: 'Again' }));
+
+  const first = await S.speakIntoLive(store, room, lecturer, session.id,
+    { heard: 'Photosynthesis runs in two stages.', seconds: 4 });
+  t.check('the segment is numbered', first.segment.sequence, 1);
+  t.check('…and carried into French', first.carried[0].language, 'fr');
+  t.check('…ready to play', first.carried[0].state, 'ready');
+
+  await t.refuses('nobody else speaks into the lecturer’s room',
+    () => S.speakIntoLive(store, room, student, session.id, { heard: 'no', seconds: 1 }));
+
+  // A REFUSAL HAPPENS IN THE ROOM, and the student is given the floor instead.
+  const substituting = L.rehearsalEngine({ translate: (text) => text.replace(/⟦T\d+⟧/g, 'Jehovah') });
+  const second = await S.speakIntoLive(store, substituting, lecturer, session.id,
+    { heard: 'The lecturer says Yahuah here.', seconds: 3 });
+  t.check('the substituted segment is refused', second.carried[0].state, 'refused');
+
+  const following = await S.followLive(store, student, session.id);
+  t.check('the student follows in their own language', following.language, 'fr');
+  t.check('…and is given both segments in order',
+    following.heard.map((h) => h.sequence), [1, 2]);
+  t.check('…the first carried', following.heard[0].source, 'carried');
+  t.check('…the second from the floor, because it was refused', following.heard[1].source, 'floor');
+  t.check('…and told why', following.heard[1].because.includes('withheld'), true);
+
+  // The lecturer, reading in English, is not shown a translation of anything.
+  const asLecturer = await S.followLive(store, lecturer, session.id);
+  t.check('the floor hears the floor', asLecturer.carriedByThePlatform, false);
+  t.check('…which is what was actually said', asLecturer.heard[1].text.includes('Yahuah'), true);
+
+  // ---- AND THE PART THAT MATTERS MOST -------------------------------------
+  //
+  // The room ends. It leaves a recording and a lecture, and NOT ONE PUBLISHED
+  // WORD: everything a student revises from still comes through the ordinary
+  // pipeline, with the lecturer reading it.
+  const closed = await S.closeLive(store, lecturer, session.id);
+  t.check('it ended', closed.session.state, 'ended');
+  t.check('…leaving a lecture', closed.lecture.title, 'Photosynthesis, live');
+  t.check('…with the minutes that were actually spoken', closed.lecture.sourceMinutes, 1);
+
+  const left = await store.artefacts(closed.lecture.id);
+  t.check('…and one artefact, the recording', left.map((a) => a.kind), ['recording']);
+  t.check('…which nobody has published', left[0].state !== 'published', true);
+  t.check('…and no notes, script or transcript came out of the live room',
+    left.some((a) => a.body), false);
+
+  await t.refuses('a room cannot be ended twice',
+    () => S.closeLive(store, lecturer, session.id));
+}
+
 t.section('Where a sentence came from');
 {
   const store = fresh();
