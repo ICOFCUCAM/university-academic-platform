@@ -256,6 +256,8 @@ One sentence governs the repository:
 - `docs/DELIVERY.md` — how a lecture reaches a student, from a recorded
   multilingual lecture to live translated audio and lip-synchronised video.
   The last two are **not built**, and that page says so on every diagram.
-- `docs/GAPS.md` — the full audit: what is built, what is stubbed, what is a
+- `docs/BUILT.md` — the audit of what **is** built, every figure recounted from
+  the repository by `npm run check:built`.
+- `docs/GAPS.md` — the other half of the truth: what is built, what is stubbed, what is a
   deliberate deviation, and what would have to be true to run a pilot.
 - `docs/INTEGRATION.md` — mounting it inside an existing university system.
