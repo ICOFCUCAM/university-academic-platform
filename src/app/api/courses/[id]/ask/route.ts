@@ -13,7 +13,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const result = await askCourseAI(store, engine(), actor, params.id, body.question, {
       register: body.register ?? null,
       conversationId: body.conversationId,
-      scope: body.lectureSequence ? { lectureSequence: body.lectureSequence } : undefined,
+      scope: {
+        lectureSequence: body.lectureSequence,
+        // The ladder is opened by the asker, not by the platform: an answer
+        // from another course is not what they are examined on here.
+        widenTo: body.widenTo,
+      },
       language: body.language,
     });
 

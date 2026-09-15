@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, Bot, Brain, Check, Headphones, ListChecks } from 'lucide-react';
 import type { LectureProgress } from '@/lib/study/progress';
+import { translator } from '@/lib/i18n/ui';
 
 /**
  * 📖 Read · 🎧 Listen · 🧠 Revision · ❓ Quiz · 🤖 Ask
@@ -17,14 +18,17 @@ import type { LectureProgress } from '@/lib/study/progress';
  * available teaches a student to distrust the page.
  */
 export function TodaysLearning({
-  courseId, lectureId, progress, has,
+  courseId, lectureId, progress, has, language,
 }: {
   courseId: string;
   lectureId: string;
   progress?: LectureProgress;
   has: { notes: boolean; audio: boolean; revision: boolean };
+  /** The student's working language: the strip is chrome, so it follows it. */
+  language?: string;
 }) {
   const [done, setDone] = useState(progress);
+  const t = translator(language);
 
   async function record(event: 'read' | 'listened' | 'revised') {
     setDone((d) => ({ ...(d ?? { lectureId, read: false, listened: false, revised: false, quizTaken: false }),
@@ -55,16 +59,16 @@ export function TodaysLearning({
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {has.notes && item('read', 'Read the notes', BookOpen,
+      {has.notes && item('read', t('lecture.read'), BookOpen,
         `/lectures/${lectureId}#structured_notes`, !!done?.read, () => void record('read'))}
-      {has.audio && item('listen', 'Listen — 15 min', Headphones,
+      {has.audio && item('listen', t('lecture.listen'), Headphones,
         `/lectures/${lectureId}#audio_15min`, !!done?.listened, () => void record('listened'))}
-      {has.revision && item('revise', 'Revision', Brain,
+      {has.revision && item('revise', t('lecture.revise'), Brain,
         `/lectures/${lectureId}#revision_materials`, !!done?.revised, () => void record('revised'))}
       {item('quiz', done?.bestScore
         ? `Quiz — best ${done.bestScore.score}/${done.bestScore.outOf}`
-        : 'Take a quiz', ListChecks, `/courses/${courseId}/study`, !!done?.quizTaken)}
-      {item('ask', 'Ask the Course AI', Bot, `/lectures/${lectureId}#ask`, false)}
+        : t('lecture.quiz'), ListChecks, `/courses/${courseId}/study`, !!done?.quizTaken)}
+      {item('ask', t('lecture.ask'), Bot, `/lectures/${lectureId}#ask`, false)}
     </div>
   );
 }

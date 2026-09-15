@@ -5,20 +5,22 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Bell, BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles, UserRound } from 'lucide-react';
 import type { Person } from '@/lib/domain/types';
 import { ROLE_LABEL, type Role } from '@/lib/capabilities';
+import { direction } from '@/lib/i18n/languages';
+import { translator, type UIKey } from '@/lib/i18n/ui';
 
 const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/lectures', label: 'Lectures', icon: BookOpen },
-  { href: '/courses', label: 'Courses', icon: GraduationCap },
-  { href: '/notifications', label: 'What happened', icon: Bell },
-  { href: '/profile', label: 'My profile', icon: UserRound },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+  { href: '/', key: 'nav.dashboard', icon: LayoutDashboard },
+  { href: '/lectures', key: 'nav.lectures', icon: BookOpen },
+  { href: '/courses', key: 'nav.courses', icon: GraduationCap },
+  { href: '/notifications', key: 'nav.notifications', icon: Bell },
+  { href: '/profile', key: 'nav.profile', icon: UserRound },
+  { href: '/settings', key: 'nav.settings', icon: Settings },
+] as const;
 
 export function AppShell({
   actor, people, unread = 0, children,
 }: {
-  actor: { id: string; role: Role; name: string };
+  actor: { id: string; role: Role; name: string; workingLanguage?: string };
   people: Person[];
   /** How many notifications are waiting. Shown on the bell, nowhere else. */
   unread?: number;
@@ -26,9 +28,14 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  // THE CHROME IN THEIR LANGUAGE TOO. French notes under a navigation bar
+  // reading "Lectures · Courses · Settings" is a strange thing to hand
+  // somebody and call multilingual.
+  const t = translator(actor.workingLanguage);
+  const dir = direction(actor.workingLanguage ?? 'en');
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" dir={dir}>
       <aside className="w-60 shrink-0 border-r border-page-line bg-page-card hidden md:flex md:flex-col">
         <div className="px-5 py-5 border-b border-page-line">
           <div className="flex items-center gap-2">
@@ -44,7 +51,8 @@ export function AppShell({
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.map(({ href, key, icon: Icon }) => {
+            const label = t(key as UIKey);
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (
               <Link
@@ -71,7 +79,7 @@ export function AppShell({
             watch them refuse you something. */}
         <div className="border-t border-page-line p-3">
           <label className="block text-[11px] uppercase tracking-wide text-ink-faint mb-1">
-            Viewing as
+            {t('nav.viewingAs')}
           </label>
           <select
             className="w-full rounded-md border border-page-line bg-white px-2 py-1.5 text-sm"

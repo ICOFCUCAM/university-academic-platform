@@ -26,7 +26,7 @@ import type { CourseKnowledgeBase } from './knowledge/types';
 import { mayRun, STAGE_BY_KIND, staleAfterEdit, studentFacingKinds } from './pipeline/stages';
 import { parseExtract, runTransformation } from './ai/transform';
 import { MODE_BY_ID, planSegments } from './ai/audioModes';
-import { answer, type Passage } from './ai/tutor';
+import { answer, retrieve, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
 import { protectTerms, restoreTerms, validateTerminology } from './ai/terminology';
 import { clearApproval, mayRegenerate } from './ai/masterIntegrity';
@@ -532,7 +532,53 @@ export async function coursePassages(store: Store, courseId: string): Promise<Pa
  * ("Lecture 07 does not cover that; Lecture 06 does"), because a student who
  * cannot tell which lecture an answer came from cannot revise from it.
  */
-export type AskScope = { lectureSequence?: number };
+export type AskScope = {
+  lectureSequence?: number;
+  /**
+   * How far the question may travel when the course cannot answer it:
+   *
+   *   lecture → course → department → university
+   *
+   * Each rung is wider and each is announced, because an answer from another
+   * course is not this course's teaching and a student revising it for this
+   * examination would be revising the wrong thing. The default stops at the
+   * course: leaving a syllabus is something a student asks for.
+   */
+  widenTo?: 'course' | 'department' | 'university';
+};
+
+/**
+ * The courses this person may be answered out of, at a given reach. Never more
+ * than they could read by opening the pages themselves: their own courses, and
+ * whatever the institution has published openly.
+ */
+async function reachableCourses(
+  store: Store, actor: Actor, from: Course, reach: 'department' | 'university',
+): Promise<Course[]> {
+  const all = await store.courses();
+  const enrolments = await store.enrolmentsOf(actor.id);
+  const mine = new Set(enrolments.filter((e) => e.status !== 'withdrawn').map((e) => e.courseId));
+
+  return all.filter((course) => {
+    if (course.id === from.id) return false;
+    const readable = mine.has(course.id)
+      || course.access === 'open'
+      || course.lecturerIds.includes(actor.id);
+    if (!readable) return false;
+    return reach === 'university'
+      || (!!course.departmentId && course.departmentId === from.departmentId);
+  });
+}
+
+/** The published passages of several courses, each tagged with where it is from. */
+async function passagesAcross(store: Store, courses: Course[]): Promise<Passage[]> {
+  const gathered: Passage[] = [];
+  for (const course of courses) {
+    const passages = await coursePassages(store, course.id);
+    gathered.push(...passages.map((p) => ({ ...p, courseId: course.id, courseCode: course.code })));
+  }
+  return gathered;
+}
 
 export async function askCourseAI(
   store: Store, e: Engine, actor: Actor, courseId: string, question: string,
@@ -599,7 +645,44 @@ export async function askCourseAI(
     };
   }
 
-  return { ...(await answer(e, ask)), answeredIn: 'course' as const };
+  const inCourse = await answer(e, ask);
+  if (!inCourse.refusedReason || !options.scope?.widenTo || options.scope.widenTo === 'course') {
+    return { ...inCourse, answeredIn: 'course' as const };
+  }
+
+  // ---- THE LADDER, ONE RUNG AT A TIME -----------------------------------
+  //
+  //   lecture → course → department → university
+  //
+  // Each rung is only tried when the one before it could not answer, and each
+  // is announced. An answer from another course is not this course's teaching:
+  // a student who could not tell would revise it for the wrong examination.
+  for (const reach of ['department', 'university'] as const) {
+    if (options.scope.widenTo === 'department' && reach === 'university') break;
+
+    const courses = await reachableCourses(store, actor, where.course, reach);
+    if (!courses.length) continue;
+    const wider = await passagesAcross(store, courses);
+    if (!wider.length) continue;
+
+    const found = await answer(e, { ...ask, passages: wider });
+    if (found.refusedReason) continue;
+
+    const from = [...new Set(found.citations.map((c) => {
+      const passage = wider.find((p) => p.lectureId === c.lectureId);
+      return passage?.courseCode;
+    }).filter(Boolean))];
+
+    return {
+      ...found,
+      body: `${where.course.code} does not cover that. ${
+        from.length ? `This is from ${from.join(', ')}` : `This is from elsewhere in the ${reach}`
+      }, so it is not what you are examined on here.\n\n${found.body}`,
+      answeredIn: reach as 'department' | 'university',
+    };
+  }
+
+  return { ...inCourse, answeredIn: 'course' as const };
 }
 
 /** ---- What the Course AI makes ----------------------------------------- */
@@ -1631,4 +1714,30 @@ export async function costsOn(store: Store, actor: Actor, courseId: string) {
     throw new Refused('What a course costs to run is for the people who run it.');
   }
   return store.costs(courseId);
+}
+
+/**
+ * SEARCHING A COURSE'S OWN MATERIAL. No model, no cost, no waiting: the same
+ * retrieval the Course AI uses, with the passages shown as they are rather
+ * than summarised — which is what somebody looking for a half-remembered
+ * sentence actually wants.
+ */
+export async function searchCourse(
+  store: Store, actor: Actor, courseId: string, query: string,
+  options: { widenTo?: 'course' | 'department' | 'university' } = {},
+): Promise<Passage[]> {
+  const where = await scene(store, courseId, actor.id);
+  const teaching = where.course.lecturerIds.includes(actor.id);
+  if (actor.role === 'student' && !where.enrolment && where.course.access !== 'open') {
+    throw new Refused('This course is not one of yours.');
+  }
+  if (!teaching && actor.role !== 'student') throw new Refused('Search is for the people on the course.');
+  if (!query.trim()) return [];
+
+  const here = await coursePassages(store, courseId);
+  const found = retrieve(here, query, 12);
+  if (found.length || !options.widenTo || options.widenTo === 'course') return found;
+
+  const courses = await reachableCourses(store, actor, where.course, options.widenTo);
+  return retrieve(await passagesAcross(store, courses), query, 12);
 }

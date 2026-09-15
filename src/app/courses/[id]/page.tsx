@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText } from 'lucide-react';
+import { BookMarked, Bot, FileText, Headphones, ListChecks, Plus, ScrollText, Search } from 'lucide-react';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
@@ -47,6 +47,12 @@ export default async function CoursePage({ params }: { params: { id: string } })
         subtitle={course.description}
         actions={(
           <>
+            <Link
+              href={`/courses/${course.id}/search`}
+              className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
+            >
+              <Search size={16} /> Search
+            </Link>
             <Link
               href={`/courses/${course.id}/work`}
               className="inline-flex items-center gap-2 rounded-md border border-page-line px-3.5 py-2 text-sm text-ink-soft hover:border-brand/40"
@@ -109,6 +115,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
                     courseId={course.id}
                     lectureId={lecture.id}
                     progress={myWork.find((p) => p.lectureId === lecture.id)}
+                    language={actor.workingLanguage}
                     has={{
                       notes: published.some((a) => a.kind === 'structured_notes'),
                       audio: published.some((a) => a.kind === 'audio_15min'),

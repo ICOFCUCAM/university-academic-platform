@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Bot, CornerDownLeft, Globe, Loader2 } from 'lucide-react';
 import { Markdown } from '@/components/Markdown';
 import { direction, LANGUAGES, LANGUAGE_BY_CODE } from '@/lib/i18n/languages';
+import { translator } from '@/lib/i18n/ui';
 
 export interface Turn {
   role: 'student' | 'tutor';
@@ -46,6 +47,7 @@ export function CourseChat({
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [language, setLanguage] = useState(courseLanguage);
+  const t = translator(language);
   const box = useRef<HTMLDivElement>(null);
 
   async function ask(text: string) {
@@ -153,7 +155,7 @@ export function CourseChat({
 
               {turn.citations && turn.citations.length > 0 && (
                 <div className="mt-3 border-t border-page-line pt-3">
-                  <p className="text-[11px] uppercase tracking-wide text-ink-faint">From your lectures</p>
+                  <p className="text-[11px] uppercase tracking-wide text-ink-faint">{t('ai.fromYourLectures')}</p>
                   <ul className="mt-1 space-y-1">
                     {[...new Map(turn.citations.map((c) => [c.lectureSequence, c])).values()].map((c) => (
                       <li key={c.lectureSequence} className="text-xs text-ink-soft">
@@ -222,7 +224,7 @@ export function CourseChat({
         <input
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder={lectureSequence ? 'Ask about this lecture…' : 'Ask about this course…'}
+          placeholder={lectureSequence ? t('ai.askLecture') : t('ai.askCourse')}
           dir={direction(language)}
           className="flex-1 rounded-md border border-page-line bg-white px-3.5 py-2.5 text-sm"
         />

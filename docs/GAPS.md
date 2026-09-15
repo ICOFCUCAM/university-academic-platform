@@ -57,16 +57,16 @@ Three kinds of entry:
 
 | | State |
 |---|---|
-| **Scope ladder beyond the course** | Partial. `lecture → course` is built and tested. `department → university` is **not built**: there is no cross-course retrieval, and a question the course cannot answer stops at the course. |
+| **Scope ladder beyond the course** | **Built.** `lecture → course → department → university`, one rung at a time, each only tried when the one before could not answer. It is opened by the asker, never by the platform, and an answer from another course says which course and that it is not what they are examined on here. |
 | **Course knowledge base per language** | **Deviation.** One knowledge base, in the lecture's own language; the tutor translates as it answers. Two indexes could disagree, and reconciling them would be authorship. The cost: retrieval quality in a language the corpus is not written in is untested. |
-| **Search across a course** | **Not built** as a screen. Retrieval exists inside the tutor; there is no search box over the course's material. |
+| **Search across a course** | **Built.** A search screen over the published lectures — no model, no cost, the passage shown as it is — with the same ladder offered rather than taken. |
 
 ## 5. Languages
 
 | | State |
 |---|---|
 | **Transcript in the working language** | **Deviation.** The specification lists the transcript among the things that arrive in the student's language. It is not translated: it is working material, nobody revises from it, and translating every transcript in a university multiplies cost for a document with no reader. Revisit if students actually ask for it. |
-| **Interface localisation** | **Not built.** Navigation, buttons and every label are in English regardless of working language. The specification asks for the interface too. This is a large, mechanical job (extract every string, add a catalogue) and none of it is done. |
+| **Interface localisation** | **Built for the chrome** — navigation, the student's learning strip, the Course AI's own labels — in all nine languages, with `coverage()` reporting how far it got and `reviewed: false` recorded because no native speaker has checked the strings. Deeper screens (the lecturer's review panel, settings, coursework) are still English. |
 | **Right-to-left layout** | Partial. Artefact bodies and the chat render `dir="rtl"`; the surrounding chrome does not mirror. |
 | **A per-language audio duration** | Stubbed — estimated from a words-per-minute table, not measured, because no audio exists. |
 

@@ -212,4 +212,50 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('The ladder: lecture → course → department → university');
+{
+  const store = fresh();
+  // A second course in the same department, open, with something published.
+  await store.saveCourse({
+    id: 'course-chem101', departmentId: 'dept-biology', code: 'CHEM 101',
+    title: 'Introductory Chemistry', lecturerIds: ['person-lecturer'],
+    status: 'running', access: 'open', originalLanguage: 'en',
+  });
+  await store.saveLecture({
+    id: 'chem-l1', context: 'course', courseId: 'course-chem101', sequence: 1,
+    title: 'Bonds', ownerId: 'person-lecturer', createdBy: 'person-lecturer', createdAt: '',
+  });
+  await store.saveArtefact({
+    id: 'chem-notes', lectureId: 'chem-l1', courseId: 'course-chem101',
+    kind: 'structured_notes', origin: 'ai', ownerId: 'person-lecturer',
+    state: 'published', derivedFromId: null, version: 1, correctedByLecturer: false,
+    createdAt: '', updatedAt: '',
+    body: '## Ionic bonding\nAn ionic bond forms when one atom transfers an electron to another, and the resulting ions attract.',
+  });
+
+  // WITHOUT BEING ASKED, THE QUESTION STAYS ON THE COURSE. Leaving a syllabus
+  // is something a student asks for.
+  const stays = await S.askCourseAI(store, e, student, 'course-biol101', 'What is ionic bonding?');
+  t.check('by default it refuses rather than wandering', stays.refusedReason, 'not-in-course-material');
+
+  const widened = await S.askCourseAI(store, e, student, 'course-biol101', 'What is ionic bonding?',
+    { scope: { widenTo: 'department' } });
+  t.check('asked to widen, it finds it', widened.answeredIn, 'department');
+  t.check('…and says it is not this course',
+    widened.body.includes('BIOL 101 does not cover that'), true);
+  t.check('…and names where it came from', widened.body.includes('CHEM 101'), true);
+}
+
+t.section('And search, which finds rather than answers');
+{
+  const store = fresh();
+  const found = await S.searchCourse(store, student, 'course-biol101', 'Calvin cycle stroma');
+  t.check('the passage itself comes back', found.length > 0, true);
+  t.check('…from the right lecture', found[0].lectureSequence, 6);
+  t.check('…and nothing for a phrase the course never used',
+    await S.searchCourse(store, student, 'course-biol101', 'quantum chromodynamics'), []);
+  await t.refuses('a stranger cannot search a course',
+    () => S.searchCourse(store, { id: 'person-nobody', role: 'student' }, 'course-biol101', 'anything'));
+}
+
 t.done();

@@ -36,6 +36,13 @@ export interface Passage {
   lectureTitle: string;
   artefactKind: ArtefactKind;
   text: string;
+  /**
+   * Which course it came from. Only set when the search has widened beyond the
+   * student's own course — an answer from another course must say so, or a
+   * student will revise it for the wrong examination.
+   */
+  courseId?: string;
+  courseCode?: string;
 }
 
 export type Intent =
