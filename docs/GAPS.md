@@ -25,7 +25,7 @@ Three kinds of entry:
 | **Text-to-speech** | **Built against a configured service.** `ACADEMIC_SPEECH` — `{text, voice}` in, audio bytes out, stored and served. Untested against a paid vendor. Duration is what the service reported, or unknown. |
 | **Voice synthesis / lecturer voice** | Stubbed — consent record, catalogue, UI | The consent layer is real and enforced. No cloning vendor is wired; the voice id is passed to the speech service and what it does with it is its business. |
 | **Audio player** | **Built.** Parts, speed from the student's profile, download, and "listened" recorded when playback starts rather than when the page loads. |
-| **File storage** | **Built, on disk.** `ACADEMIC_MEDIA_DIR`; keys minted by the platform so a filename cannot reach the path; served through a route that asks `mayAct` rather than relying on an unguessable URL. No object store (S3/Supabase) — one file against the same interface. |
+| **File storage** | **Built twice, behind one interface.** Disk (`ACADEMIC_MEDIA_DIR`) for a university that will not let lecture audio leave its estate, and an S3-compatible object store (`ACADEMIC_S3_*`) for anybody running two instances, since the second cannot read what the first wrote to its own disk — AWS, R2, MinIO, B2 and Supabase Storage all speak it, and no SDK is pulled in for forty lines of HMAC. Keys are minted by the platform so a filename can never reach the path, and everything is served through a route that asks `mayAct` rather than relying on an unguessable URL. **The object store has never run against a real bucket**: the signer is pinned to AWS's own published test vector and the requests are read by a fake server, which catches a signature wrong in shape and does not promise it authenticates. |
 | **Live microphone recording** | **Built, in the browser.** `RecordLecture` uses `MediaRecorder` with the browser's own container, keeps the take in the page while it runs, and hands the result to the upload path as an ordinary file — so a recording and an uploaded file land in the same store by the same route. The tab must stay open; the page says so. No resumable upload, no recovery of a take lost to a closed tab. |
 | **Authentication** | **Built for a mounted deployment.** Three modes: the demonstration switcher (default), a signed host header (`ACADEMIC_SESSION_MODE=header` + shared secret, HMAC, five-minute window), and a verified Supabase access token (signature and expiry, not merely decoded). No fallback outside `demo`. No login screen of its own, no password reset, no SSO client — the host owns those. |
 | **Database** | **Adapter written, never run.** `data/supabase.ts` against the tables in `docs/integration/001_lecture_studio.sql`, with `data/conformance.mjs` as the suite it must pass — `npm run conformance:supabase` against a real project. Until that passes it is a draft, and the in-memory store is what runs. |
@@ -119,7 +119,7 @@ Three kinds of entry:
 
 In order, because each one blocks the next:
 
-1. A transcription vendor and an object store — without them the pipeline has no input.
+1. A transcription vendor, and the object store pointed at a real bucket — the adapter is written and signature-checked, never authenticated.
 2. A database implementation of `Store` and real authentication — without them nothing survives a restart and anybody can be anybody.
 3. The benchmark run against Claude, Gemini and OpenAI, and a model chosen on preservation.
 4. A speech vendor — the audio lesson is half the product's promise.

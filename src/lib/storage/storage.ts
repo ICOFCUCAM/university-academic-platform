@@ -11,8 +11,10 @@
 //               single-server installation actually wants: a university that
 //               will not let lecture audio leave its estate is a university
 //               that will not let it leave its estate.
-//   Object store  not written. The interface is three methods; an S3 or
-//               Supabase Storage implementation is one file.
+//   OBJECT      objectStore.ts — S3's HTTP API, which AWS, R2, MinIO, B2 and
+//               Supabase Storage all speak. What anybody running two instances
+//               needs, because the second cannot read what the first wrote to
+//               its own disk.
 //
 // AND THE PATHS ARE OURS, NOT THE USER'S. A filename from a browser is
 // attacker-controlled input — `../../etc/passwd.mp3` is a valid filename on
@@ -23,6 +25,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { createObjectStorage } from './objectStore';
 
 export interface StoredFile {
   /** The key the platform uses. Never a name a person typed. */
@@ -37,7 +40,7 @@ export interface StoredFile {
 }
 
 export interface Storage {
-  readonly id: 'disk' | 'none';
+  readonly id: 'disk' | 'object' | 'none';
   put(input: {
     courseId: string; lectureId: string; kind: 'recording' | 'audio';
     originalName: string; contentType: string; data: Buffer;
@@ -136,6 +139,21 @@ export function noStorage(): Storage {
 }
 
 export function storage(): Storage {
+  // THE OBJECT STORE WINS WHERE IT IS CONFIGURED, and it is configured only
+  // when every part of it is: a bucket with no credentials is a deployment
+  // that would fail on the first upload rather than on the first page.
+  const { ACADEMIC_S3_ENDPOINT, ACADEMIC_S3_BUCKET, ACADEMIC_S3_KEY_ID, ACADEMIC_S3_SECRET } = process.env;
+  if (ACADEMIC_S3_ENDPOINT && ACADEMIC_S3_BUCKET && ACADEMIC_S3_KEY_ID && ACADEMIC_S3_SECRET) {
+    return createObjectStorage({
+      endpoint: ACADEMIC_S3_ENDPOINT,
+      bucket: ACADEMIC_S3_BUCKET,
+      region: process.env.ACADEMIC_S3_REGION ?? 'us-east-1',
+      accessKeyId: ACADEMIC_S3_KEY_ID,
+      secretAccessKey: ACADEMIC_S3_SECRET,
+      pathStyle: process.env.ACADEMIC_S3_PATH_STYLE !== 'false',
+    });
+  }
+
   const dir = process.env.ACADEMIC_MEDIA_DIR;
   if (!dir) return noStorage();
   mkdirSync(dir, { recursive: true });
