@@ -8,7 +8,8 @@
 
 import type { ArtefactKind } from '../domain/types';
 import type { LectureExtract } from '../knowledge/types';
-import type { CompletionResult, Engine } from './provider';
+import type { Engine } from './provider';
+import { callAs, type RoleResult } from './roles';
 import {
   correctedTextPrompt, knowledgeExtractionPrompt, revisionPrompt,
   structuredNotesPrompt, teachingScriptPrompt,
@@ -47,7 +48,7 @@ const BUDGET: Partial<Record<ArtefactKind, { maxTokens: number; effort: 'low' | 
   revision_materials: { maxTokens: 12000, effort: 'high' },
 };
 
-export async function runTransformation(e: Engine, input: TransformInput): Promise<CompletionResult> {
+export async function runTransformation(e: Engine, input: TransformInput): Promise<RoleResult> {
   const budget = BUDGET[input.kind] ?? { maxTokens: 16000, effort: 'high' as const };
 
   const prompt = (() => {
@@ -68,7 +69,9 @@ export async function runTransformation(e: Engine, input: TransformInput): Promi
     }
   })();
 
-  return e.model.complete({
+  // AS THE TRANSFORMATION ROLE, which refuses a prompt that does not carry the
+  // contract. A stage added later without it does not run at all.
+  return callAs(e, 'transformation', {
     system: prompt.system,
     user: prompt.user,
     maxTokens: budget.maxTokens,

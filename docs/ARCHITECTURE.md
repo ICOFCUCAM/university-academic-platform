@@ -90,6 +90,34 @@ merges them, and three findings fall out that no single lecture can show:
 - **What the course uses and never defines** — the gap invisible from inside any
   one lecture.
 
+## 5b. RBAC for AI — the deepest principle in the product
+
+The platform does not rely on *"please behave yourself, AI"*. A model call is
+made **as a role**, and the role has a permission boundary enforced at the call
+site, exactly as `capabilities.ts` and `ownership.ts` do for people.
+`src/lib/ai/roles.ts`:
+
+| Role | May | May not |
+|---|---|---|
+| **Transformation** | change grammar, improve readability, structure information, summarise, hand text to speech | fact-check, debate, correct knowledge, inject outside information, reinterpret or challenge the lecturer, silently change claims |
+| **Verifier** | compare claims, report what moved | judge whether a claim is true, edit anything, recommend a correction |
+| **Course tutor** | answer from this course's published lectures, cite, refuse | use knowledge from outside the course, predict examination questions, do assessed work |
+| **General explainer** | use general knowledge — only when a student explicitly asked | run without that request, reach a page unlabelled, silently contradict the lecturer |
+
+`callAs(engine, role, request, grants)` makes it a boundary rather than a
+description, with four structural refusals:
+
+1. a transformation whose prompt does not carry the contract **cannot run**;
+2. the tutor **cannot run with an empty corpus** — a tutor with no course
+   material answers from the model's own knowledge and sounds identical;
+3. the general explainer **cannot run** unless the grant "the student asked to
+   go beyond the course" is passed at the call site;
+4. every result is **stamped with its role**, so the screen can label it and the
+   two knowledge sources never merge on a page.
+
+`roles.test.mjs` proves each refusal, and then greps the whole source tree to
+check that nothing calls the model directly around the gate.
+
 ## 6. Two passes, and a third that checks the second
 
 **Pass 1 — a faithful transcript.** Speech to text, no interpretation.

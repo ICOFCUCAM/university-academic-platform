@@ -19,7 +19,8 @@
 // instead of asking a busy academic to read twelve thousand words twice.
 // ---------------------------------------------------------------------------
 
-import type { CompletionResult, Engine } from './provider';
+import type { Engine } from './provider';
+import { callAs, type RoleResult } from './roles';
 
 export type ClaimStatus = 'preserved' | 'altered' | 'added' | 'removed';
 
@@ -112,9 +113,9 @@ export async function verifyTransformation(
 ): Promise<VerificationReport> {
   const checkedAt = new Date().toISOString();
 
-  let result: CompletionResult;
+  let result: RoleResult;
   try {
-    result = await e.model.complete({
+    result = await callAs(e, 'verifier', {
       system: VERIFIER_SYSTEM,
       user: `ORIGINAL TRANSCRIPT\n\n${original}\n\n---\n\nTRANSFORMED VERSION\n\n${transformed}`,
       maxTokens: 16000,

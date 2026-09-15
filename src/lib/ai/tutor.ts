@@ -28,6 +28,7 @@ import type { ArtefactKind, Register, TutorCitation } from '../domain/types';
 import type { CourseKnowledgeBase } from '../knowledge/types';
 import { GENERAL_AI_SYSTEM, generalUserTurn, TUTOR_SYSTEM, tutorUserTurn } from './prompts';
 import type { Engine } from './provider';
+import { callAs } from './roles';
 
 export interface Passage {
   lectureId: string;
@@ -292,12 +293,14 @@ export async function answer(e: Engine, input: AnswerInput): Promise<AnswerResul
     const context = retrieve(input.passages, input.question, 4)
       .map((p) => `Lecture ${String(p.lectureSequence).padStart(2, '0')} — ${p.lectureTitle}: ${p.text.slice(0, 400)}`)
       .join('\n\n');
-    const general = await e.model.complete({
+    // THE ONE PLACE THE GENERAL DOOR OPENS, and it opens because the student's
+    // own words asked it to. `callAs` refuses this role without that grant.
+    const general = await callAs(e, 'general-explainer', {
       system: GENERAL_AI_SYSTEM,
       user: generalUserTurn(input.question, context),
       maxTokens: 4000,
       effort: 'medium',
-    });
+    }, { studentAskedToGoBeyondTheCourse: true });
     return {
       body: general.text,
       citations: [],
@@ -339,7 +342,7 @@ export async function answer(e: Engine, input: AnswerInput): Promise<AnswerResul
     input.register ?? (intent.kind === 'explain' ? intent.register ?? undefined : undefined);
   const system = register ? `${TUTOR_SYSTEM}\n\n${REGISTER_NOTE[register]}` : TUTOR_SYSTEM;
 
-  const result = await e.model.complete({
+  const result = await callAs(e, 'course-tutor', {
     system,
     user: tutorUserTurn(
       hits.map((h) => ({
@@ -350,7 +353,7 @@ export async function answer(e: Engine, input: AnswerInput): Promise<AnswerResul
     ),
     maxTokens: 8000,
     effort: 'medium',
-  });
+  }, { corpusSize: hits.length });
 
   return {
     body: result.text,

@@ -91,6 +91,14 @@ If the lecturer taught that the Roman Empire fell because Christianity weakened
 its military, that is what the student receives. Whether it is sound is the
 lecturer's business, on the review screen, in their own words.
 
+**The AI has permissions.** Think of it as RBAC for AI: every model call is
+made as a role — transformation, verifier, course tutor, general explainer —
+and `callAs` refuses the call when the role's conditions are not met. A
+transformation prompt missing the contract will not run; the tutor will not run
+with an empty corpus; general knowledge is unreachable unless a student
+explicitly asked for it. Not "please behave yourself", but a defined permission
+boundary.
+
 **The model is not chosen yet.** `bench/` is a preservation benchmark — sixteen
 passages written to tempt a model into being helpful, scored mechanically.
 Claude is wired first; another vendor is one file against the same interface.

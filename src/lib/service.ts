@@ -27,6 +27,7 @@ import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
 import type { Engine } from './ai/provider';
+import { callAs } from './ai/roles';
 import type { Store } from './data/store';
 
 export class Refused extends Error {
@@ -439,7 +440,7 @@ export async function makeStudyAid(
     summary: 'Summarise this material in about four hundred words, in the order it was taught.',
   };
 
-  const result = await e.model.complete({
+  const result = await callAs(e, 'course-tutor', {
     system: `You make study material for one university course out of that course’s own lectures.
 
 THE MATERIAL BELOW IS THE WHOLE OF YOUR SOURCE. Do not add a fact, a date, a
@@ -451,7 +452,7 @@ different question.`,
     user: `${ASK[brief.kind]}\n\nCOURSE MATERIAL — ${range}\n\n${material}`,
     maxTokens: 16000,
     effort: 'high',
-  });
+  }, { corpusSize: passages.length });
 
   const aid: StudyAid = {
     id: randomUUID(),
