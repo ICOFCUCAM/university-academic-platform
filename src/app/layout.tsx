@@ -6,6 +6,7 @@ import { getStore } from '@/lib/data';
 import { unread } from '@/lib/notify/notifications';
 import { bodyAttributes, settingsOf } from '@/lib/access/accessibility';
 import { can } from '@/lib/capabilities';
+import { direction } from '@/lib/i18n/languages';
 
 export const metadata: Metadata = {
   title: 'Lecture Studio',
@@ -28,7 +29,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const presentation = bodyAttributes(settingsOf(me?.accessibility));
 
   return (
-    <html lang={actor.workingLanguage ?? 'en'}>
+    // THE DOCUMENT IS WHAT IS RIGHT-TO-LEFT, not a div inside it. With `dir`
+    // on an inner element the scrollbar, the native form controls and
+    // anything rendered outside that div stay left-to-right, which is how a
+    // page ends up half-mirrored.
+    <html lang={actor.workingLanguage ?? 'en'} dir={direction(actor.workingLanguage ?? 'en')}>
       <body {...presentation}>
         <AppShell actor={actor} people={people} unread={waiting} canReadRecord={canReadRecord}>{children}</AppShell>
       </body>

@@ -69,6 +69,7 @@ export default async function LecturePage({ params }: { params: { id: string } }
   return (
     <div>
       <PageHeader
+        lang={course.originalLanguage ?? 'en'}
         eyebrow={(
           <>
             <Link href={`/courses/${course.id}`} className="hover:text-brand">{course.code}</Link>

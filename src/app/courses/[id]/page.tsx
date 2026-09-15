@@ -45,6 +45,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
         eyebrow={`${course.session ?? ''} ${course.code}`.trim()}
         title={course.title}
         subtitle={course.description}
+        lang={course.originalLanguage ?? 'en'}
         actions={(
           <>
             <Link

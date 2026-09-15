@@ -94,6 +94,35 @@ body[data-contrast='high'] [class*='border-emerald-200'],
 body[data-contrast='high'] [class*='border-emerald-300'],
 body[data-contrast='high'] [class*='border-red-200'] { border-color: #000; }
 
+/* ---------------------------------------------------------------------------
+   A RIGHT-TO-LEFT PAGE WITH LEFT-TO-RIGHT TEXT STILL IN IT.
+
+   The navigation is translated into all nine languages; the headings and
+   sentences on the deeper screens are not yet. Told the document is Arabic,
+   the browser lays every one of those English sentences out right-to-left and
+   puts the full stop on the left — ".Nothing has been made from this lecture
+   yet" — which is not a translation problem but a typography one, and which
+   reading the source never shows you.
+
+   `unicode-bidi: plaintext` resolves each block's direction from its own first
+   strong character, so an English paragraph reads left-to-right and an Arabic
+   one reads right-to-left, inside the same mirrored frame. It is scoped to
+   right-to-left readers, so nothing changes for anybody else, and it shrinks
+   as the strings get translated rather than having to be undone.
+   --------------------------------------------------------------------------- */
+[dir='rtl'] p,
+[dir='rtl'] h1, [dir='rtl'] h2, [dir='rtl'] h3, [dir='rtl'] h4,
+[dir='rtl'] li, [dir='rtl'] dt, [dir='rtl'] dd,
+[dir='rtl'] label, [dir='rtl'] summary, [dir='rtl'] figcaption,
+[dir='rtl'] button, [dir='rtl'] option, [dir='rtl'] th, [dir='rtl'] td,
+/* Inline runs too — a sentence of chrome is as often a <span> as a <p>. Not
+   <div>: direction on a flex container decides the order of its items, and a
+   layout box should not change what order its children sit in because of the
+   first letter of the text inside it. */
+[dir='rtl'] span, [dir='rtl'] a {
+  unicode-bidi: plaintext;
+}
+
 body[data-links='underlined'] a { text-decoration: underline; }
 
 /* Motion. The media query holds when the person has said "follow my system";
@@ -125,7 +154,7 @@ body[data-motion='reduced'] *::after {
 .prose-academic h2 { @apply text-lg font-semibold mt-7 mb-2 text-ink; }
 .prose-academic h3 { @apply text-base font-semibold mt-5 mb-1; }
 .prose-academic p { @apply my-3; }
-.prose-academic ul { @apply my-3 list-disc pl-5 space-y-1; }
-.prose-academic ol { @apply my-3 list-decimal pl-5 space-y-1; }
-.prose-academic blockquote { @apply border-l-2 border-page-line pl-4 italic text-ink-soft my-4; }
+.prose-academic ul { @apply my-3 list-disc ps-5 space-y-1; }
+.prose-academic ol { @apply my-3 list-decimal ps-5 space-y-1; }
+.prose-academic blockquote { @apply border-s-2 border-page-line ps-4 italic text-ink-soft my-4; }
 .prose-academic code { @apply bg-page px-1 py-0.5 rounded text-[13px]; }

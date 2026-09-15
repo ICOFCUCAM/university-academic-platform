@@ -74,7 +74,7 @@ export function AudioLesson({
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ms-auto flex items-center gap-1.5">
           {SPEEDS.map((value) => (
             <button
               key={value} type="button" onClick={() => setRate(value)}
@@ -87,7 +87,7 @@ export function AudioLesson({
           ))}
           <a
             href={part.src} download
-            className="ml-2 inline-flex items-center gap-1 rounded border border-page-line px-2 py-1 text-[11px] text-ink-soft"
+            className="ms-2 inline-flex items-center gap-1 rounded border border-page-line px-2 py-1 text-[11px] text-ink-soft"
           >
             <Download size={11} /> Download
           </a>

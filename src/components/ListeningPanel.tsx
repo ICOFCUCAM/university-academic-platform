@@ -89,7 +89,7 @@ export function ListeningPanel({
                   {voice.available ? voice.blurb : voice.unavailableBecause}
                 </span>
               </span>
-              {!voice.available && <MicOff size={14} className="ml-auto mt-1 shrink-0" />}
+              {!voice.available && <MicOff size={14} className="ms-auto mt-1 shrink-0" />}
             </label>
           </li>
         ))}

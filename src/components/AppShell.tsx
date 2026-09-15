@@ -43,7 +43,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen flex" dir={dir}>
-      <aside className="w-60 shrink-0 border-r border-page-line bg-page-card hidden md:flex md:flex-col">
+      <aside className="w-60 shrink-0 border-e border-page-line bg-page-card hidden md:flex md:flex-col">
         <div className="px-5 py-5 border-b border-page-line">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-brand" />
@@ -52,7 +52,7 @@ export function AppShell({
           {/* THE POSITIONING, AND IT IS ALSO THE ARCHITECTURE. Each clause is
               enforced somewhere: the lecturer owns the material, the model only
               transforms it, and what a student receives has a name on it. */}
-          <p className="mt-1 text-[11px] leading-4 text-ink-faint">
+          <p lang="en" dir="ltr" className="mt-1 text-[11px] leading-4 text-ink-faint">
             Lecturers teach. AI transforms. Students learn.
           </p>
         </div>
@@ -74,7 +74,7 @@ export function AppShell({
                 <Icon size={16} />
                 {label}
                 {href === '/notifications' && unread > 0 && (
-                  <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  <span className="ms-auto rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-medium text-white">
                     {unread}
                   </span>
                 )}
@@ -91,6 +91,10 @@ export function AppShell({
             {t('nav.viewingAs')}
           </label>
           <select
+            // People's names, and role labels that are not translated: a
+            // right-to-left select clips the beginning of a left-to-right
+            // string, which is how "Joseph Adeyemi" arrives as "seph Adeyemi".
+            dir="ltr"
             className="w-full rounded-md border border-page-line bg-white px-2 py-1.5 text-sm"
             value={actor.id}
             onChange={(event) => {

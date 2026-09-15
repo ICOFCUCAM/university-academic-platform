@@ -4,16 +4,29 @@
 // ---------------------------------------------------------------------------
 
 import type { ArtefactState } from '@/lib/domain/types';
+import { direction } from '@/lib/i18n/languages';
 
+/**
+ * `lang` is the language THE TITLE IS ACTUALLY IN, which is not the same
+ * question as what language the reader wants.
+ *
+ * It defaults to English because that is the truth about these strings today:
+ * the navigation is translated into all nine languages, and the headings on
+ * the deeper screens are not. Saying so renders them correctly inside a
+ * right-to-left page instead of putting the full stop on the left — which a
+ * screenshot catches and reading the source never does. A header that gets
+ * translated should pass the reader's language and this default should shrink.
+ */
 export function PageHeader({
-  eyebrow, title, subtitle, actions,
+  eyebrow, title, subtitle, actions, lang = 'en',
 }: {
-  eyebrow?: string; title: string; subtitle?: string; actions?: React.ReactNode;
+  eyebrow?: string; title: string; subtitle?: string; actions?: React.ReactNode; lang?: string;
 }) {
+  const own = { lang, dir: direction(lang) };
   return (
     <header className="border-b border-page-line bg-page-card px-6 py-5 md:px-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0" {...own}>
           {eyebrow && <p className="text-[11px] uppercase tracking-wide text-ink-faint">{eyebrow}</p>}
           <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
           {subtitle && <p className="mt-1 max-w-2xl text-sm text-ink-soft">{subtitle}</p>}
@@ -53,15 +66,17 @@ export function StateBadge({ state }: { state: ArtefactState }) {
 }
 
 export function Card({
-  children, className = '', dir,
+  children, className = '', dir, lang,
 }: {
   children: React.ReactNode;
   className?: string;
   /** Set where the card holds material in a right-to-left language. */
   dir?: 'ltr' | 'rtl';
+  /** And the language it is in, where that is known and is worth saying. */
+  lang?: string;
 }) {
   return (
-    <section dir={dir} className={`rounded-lg border border-page-line bg-page-card ${className}`}>
+    <section dir={dir} lang={lang} className={`rounded-lg border border-page-line bg-page-card ${className}`}>
       {children}
     </section>
   );

@@ -106,7 +106,7 @@ export function WordCheck({
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="font-medium">
                   <mark className="bg-amber-100 px-1">{word.word}</mark>
-                  <span className="ml-2 text-xs font-normal text-ink-faint">
+                  <span className="ms-2 text-xs font-normal text-ink-faint">
                     {word.occurrences === 1 ? 'once' : `${word.occurrences} times`}
                   </span>
                 </p>

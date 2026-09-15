@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
+import { direction } from '@/lib/i18n/languages';
 import { Card, Empty, PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,15 @@ export default async function Courses() {
               const faculty = faculties.find((f) => f.id === department?.facultyId);
               return (
                 <Link key={course.id} href={`/courses/${course.id}`}>
-                  <Card className="px-5 py-4 transition hover:border-brand/40">
+                  {/* THE CARD IS IN THE COURSE'S OWN LANGUAGE. A title and a
+                      description that were written in English do not become
+                      Arabic because the reader is: telling the browser
+                      otherwise puts the full stop on the wrong side. */}
+                  <Card
+                    className="px-5 py-4 transition hover:border-brand/40"
+                    lang={course.originalLanguage ?? 'en'}
+                    dir={direction(course.originalLanguage ?? 'en')}
+                  >
                     {/* An independent educator has no faculty and no
                         department, and the line simply does not appear. */}
                     {(faculty || department) && (

@@ -113,7 +113,7 @@ export function CourseChat({
 
         {turns.map((turn, i) => (
           turn.role === 'student' ? (
-            <p key={i} className="ml-auto max-w-[80%] rounded-lg bg-brand px-4 py-2.5 text-sm text-white">
+            <p key={i} className="ms-auto max-w-[80%] rounded-lg bg-brand px-4 py-2.5 text-sm text-white">
               {turn.body}
             </p>
           ) : (
@@ -208,7 +208,7 @@ export function CourseChat({
               >
                 {LANGUAGE_BY_CODE[code]?.endonym ?? code}
                 {code === courseLanguage && (
-                  <span className={`ml-1 text-[10px] uppercase ${language === code ? 'text-white/70' : 'text-ink-faint'}`}>
+                  <span className={`ms-1 text-[10px] uppercase ${language === code ? 'text-white/70' : 'text-ink-faint'}`}>
                     taught in
                   </span>
                 )}

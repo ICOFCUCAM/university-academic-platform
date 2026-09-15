@@ -121,7 +121,7 @@ export function Coursework({
                   <input type="checkbox" name="required" defaultChecked /> Essential
                 </label>
                 <button type="submit" disabled={busy}
-                  className="ml-auto rounded bg-brand px-3 py-1.5 text-xs font-medium text-white">
+                  className="ms-auto rounded bg-brand px-3 py-1.5 text-xs font-medium text-white">
                   Add
                 </button>
               </div>
@@ -272,7 +272,7 @@ export function Coursework({
                 <input name="dueAt" type="date"
                   className="rounded border border-page-line px-2 py-1.5 text-sm" />
                 <button type="submit" disabled={busy}
-                  className="ml-auto rounded bg-brand px-3 py-1.5 text-xs font-medium text-white">
+                  className="ms-auto rounded bg-brand px-3 py-1.5 text-xs font-medium text-white">
                   Set it
                 </button>
               </div>

@@ -10,6 +10,7 @@
     "lint": "next lint",
     "test": "npm run test:suite && npm run test:constitution && npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:roles && npm run test:prompts && npm run test:terminology && npm run test:words && npm run test:offline && npm run test:tutor && npm run test:jobs && npm run test:i18n && npm run test:voice && npm run test:ui && npm run test:quiz && npm run test:flashcards && npm run test:progress && npm run test:repetition && npm run test:access && npm run test:audit && npm run test:certificate && npm run test:session && npm run test:store && npm run test:bench && npm run test:storage && npm run test:vendors && npm run test:usage && npm run test:limits && npm run test:coursework && npm run test:service",
     "test:suite": "node src/lib/suite.test.mjs",
+    "check:rtl": "node scripts/rtl-audit.mjs",
     "test:capabilities": "node src/lib/capabilities.test.mjs",
     "test:ownership": "node src/lib/domain/ownership.test.mjs",
     "test:pipeline": "node src/lib/pipeline/stages.test.mjs",

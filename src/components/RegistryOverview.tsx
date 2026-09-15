@@ -80,9 +80,9 @@ export function RegistryOverview({
               <div key={faculty.id}>
                 <p className="text-sm font-medium">{faculty.name}</p>
                 {departments.filter((d) => d.facultyId === faculty.id).map((department) => (
-                  <div key={department.id} className="ml-4 mt-1">
+                  <div key={department.id} className="ms-4 mt-1">
                     <p className="text-sm text-ink-soft">{department.name}</p>
-                    <ul className="ml-4 mt-1 space-y-1">
+                    <ul className="ms-4 mt-1 space-y-1">
                       {courses.filter((c) => c.departmentId === department.id).map((course) => {
                         const mine = lectures.filter((l) => l.courseId === course.id);
                         const live = published.filter((a) => a.courseId === course.id).length;

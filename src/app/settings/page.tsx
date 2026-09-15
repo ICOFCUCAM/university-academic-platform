@@ -31,15 +31,15 @@ export default async function Settings() {
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="text-ink-soft">Language model</dt>
-              <dd className="text-right font-medium">{wired.model}</dd>
+              <dd className="text-end font-medium">{wired.model}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-ink-soft">Transcription</dt>
-              <dd className="text-right font-medium">{wired.transcription}</dd>
+              <dd className="text-end font-medium">{wired.transcription}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-ink-soft">Speech</dt>
-              <dd className="text-right font-medium">{wired.speech}</dd>
+              <dd className="text-end font-medium">{wired.speech}</dd>
             </div>
           </dl>
           {!wired.live && (
@@ -87,7 +87,7 @@ export default async function Settings() {
                   <strong className="font-medium">{stage.label}</strong>
                   <span className="text-ink-soft"> — {stage.purpose}</span>
                   {stage.requiresApprovedSource && (
-                    <span className="ml-1 text-[11px] text-warn">· waits for the lecturer’s approval</span>
+                    <span className="ms-1 text-[11px] text-warn">· waits for the lecturer’s approval</span>
                   )}
                 </span>
               </li>

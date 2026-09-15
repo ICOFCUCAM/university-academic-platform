@@ -100,8 +100,8 @@ export function QuizRunner({
                             onChange={() => setGiven((g) => ({ ...g, [question.n]: option.label }))}
                           />
                           <span><strong>{option.label}.</strong> {option.text}</span>
-                          {isAnswer && <Check size={14} className="ml-auto mt-0.5 shrink-0 text-ok" />}
-                          {chosen && marking?.right === false && <X size={14} className="ml-auto mt-0.5 shrink-0 text-bad" />}
+                          {isAnswer && <Check size={14} className="ms-auto mt-0.5 shrink-0 text-ok" />}
+                          {chosen && marking?.right === false && <X size={14} className="ms-auto mt-0.5 shrink-0 text-bad" />}
                         </label>
                       </li>
                     );

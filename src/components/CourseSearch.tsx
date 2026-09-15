@@ -74,7 +74,7 @@ export function CourseSearch({ courseId, courseCode }: { courseId: string; cours
           <article key={i} className="rounded-lg border border-page-line bg-page-card px-5 py-4">
             <p className="text-[11px] uppercase tracking-wide text-ink-faint">
               {passage.courseCode && passage.courseCode !== courseCode && (
-                <span className="mr-1 rounded bg-amber-100 px-1.5 py-0.5 text-warn">
+                <span className="me-1 rounded bg-amber-100 px-1.5 py-0.5 text-warn">
                   {passage.courseCode} — not this course
                 </span>
               )}

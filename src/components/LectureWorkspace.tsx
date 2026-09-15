@@ -257,7 +257,7 @@ export function LectureWorkspace({
             >
               <button
                 type="button"
-                className="w-full text-left"
+                className="w-full text-start"
                 onClick={() => artefact && setOpen(stage.kind)}
                 disabled={!artefact}
               >
@@ -377,9 +377,9 @@ export function LectureWorkspace({
         )}
 
         {!shown ? (
-          <div className="rounded-lg border border-dashed border-page-line bg-page-card px-6 py-10 text-center text-sm text-ink-soft">
+          <p className="rounded-lg border border-dashed border-page-line bg-page-card px-6 py-10 text-center text-sm text-ink-soft">
             Nothing has been made from this lecture yet.
-          </div>
+          </p>
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -627,7 +627,7 @@ export function LectureWorkspace({
                         : '. Nothing the lecturer said was introduced, removed or altered.'}
                     </p>
                     {shown.verification.checks.filter((c) => c.status !== 'preserved').map((c, i) => (
-                      <div key={i} className="mt-2 border-l-2 border-amber-300 pl-3 text-xs">
+                      <div key={i} className="mt-2 border-s-2 border-amber-300 ps-3 text-xs">
                         <p className="font-medium uppercase tracking-wide text-warn">{c.status}</p>
                         {c.original && <p className="text-ink-soft">Lecture: “{c.original}”</p>}
                         {c.output && <p className="text-ink-soft">Now: “{c.output}”</p>}

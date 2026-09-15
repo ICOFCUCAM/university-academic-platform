@@ -112,7 +112,7 @@ export function StudyRoom({
                 <li key={aid.id}>
                   <button
                     type="button" onClick={() => setOpen(aid.id)}
-                    className={`w-full rounded px-2 py-1.5 text-left text-xs ${
+                    className={`w-full rounded px-2 py-1.5 text-start text-xs ${
                       open === aid.id ? 'bg-brand-tint text-brand-dark' : 'text-ink-soft hover:bg-page'
                     }`}
                   >
