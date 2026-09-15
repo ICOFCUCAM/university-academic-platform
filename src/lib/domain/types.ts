@@ -66,6 +66,13 @@ export interface Course {
   description?: string;
   /** Who teaches it. More than one, because co-teaching is normal. */
   lecturerIds: string[];
+  /**
+   * Terms this lecturer uses that must never be substituted, normalised,
+   * translated or respelled — proper names, theological and disciplinary
+   * terms. The lecturer maintains it; the transformation is held to it
+   * mechanically, not asked to respect it.
+   */
+  terminology?: string[];
   /** The university opens and closes the course; a lecturer never does. */
   status: 'draft' | 'running' | 'archived';
 }
@@ -191,6 +198,13 @@ export interface Artefact {
    * leaving blank.
    */
   verification?: import('../ai/verify').VerificationReport;
+
+  /**
+   * Where the lecturer's own terminology did not survive the transformation.
+   * Found by counting, not by asking a model, so nothing here can be talked
+   * round. Empty is the normal case and means the check ran and found nothing.
+   */
+  terminology?: import('../ai/terminology').TerminologyFinding[];
 
   createdAt: string;
   updatedAt: string;

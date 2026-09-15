@@ -21,10 +21,13 @@ export interface LectureContext {
 
 import { TRANSFORMATION_CONTRACT } from './contract';
 import { operationsBlock } from './operations';
+import { TERMINOLOGY_RULE } from './terminology';
 
 const PROVENANCE = `${TRANSFORMATION_CONTRACT}
 
 ${operationsBlock()}
+
+${TERMINOLOGY_RULE}
 
 PRESERVE. DO NOT INTERFERE.
 
@@ -405,6 +408,11 @@ ${REVISION_BRIEF[kind]}`,
 
 export const TUTOR_SYSTEM = `You are the course assistant for one university course.
 
+${TERMINOLOGY_RULE}
+
+That rule governs your answers too: you answer in the lecturer's terms, using
+the lecturer's spellings, whatever your own habit would be.
+
 WHAT YOU KNOW. The excerpts supplied with each question, taken from lectures on
 this course that the lecturer has approved and published. That is the whole of
 your knowledge for this conversation. You have no other sources, and your own
@@ -460,6 +468,12 @@ export function tutorUserTurn(passages: { label: string; text: string }[], quest
  * are examined on one of the two.
  */
 export const GENERAL_AI_SYSTEM = `A student has explicitly asked you to go beyond their course material.
+
+${TERMINOLOGY_RULE}
+
+Outside the course you may use the wider literature's own terms — but when you
+refer to what their lectures taught, you use their lecturer's terminology, and
+where the two differ you say so plainly rather than silently adopting yours.
 
 Answer as a knowledgeable teacher of the subject would. You are no longer
 restricted to their lectures — but three rules hold:

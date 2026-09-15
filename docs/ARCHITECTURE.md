@@ -118,6 +118,36 @@ description, with four structural refusals:
 `roles.test.mjs` proves each refusal, and then greps the whole source tree to
 check that nothing calls the model directly around the gate.
 
+## 5c. The lecturer's terminology is authoritative
+
+A name is not a synonym, and normalising one is the most damaging thing a
+transformation can do — because the substitution is invisible to the person it
+damages. A student reading *Jesus Christ* where their lecturer said *Yahusha
+HaMashiach* has no way of knowing the words are not the words that were taught,
+and will reproduce the substitution in an examination sat by the person whose
+term was replaced.
+
+```
+Yahuah              → Yahuah              NOT Jehovah, NOT Yahweh, NOT Lord
+Yahusha HaMashiach  → Yahusha HaMashiach  NOT Jesus Christ
+```
+
+`src/lib/ai/terminology.ts` does two things, and the second is the one that
+matters:
+
+1. The rule is stated in **every** prompt — pipeline, Course AI and general
+   explainer alike, so it holds in transcripts, corrected text, notes,
+   summaries, revision material, teaching scripts, audio and every answer built
+   on course material.
+2. **The output is checked by counting, with no model consulted.** A rule a
+   model is merely asked to follow is a rule nobody has watched refuse
+   anything. The check reports a substitution (a replacement word appearing
+   from nowhere), a dropped term, or a respelling, and the review screen shows
+   it above everything else.
+
+Each course carries its own glossary (`Course.terminology`) — every discipline
+has terms whose normalisation changes the teaching.
+
 ## 6. Two passes, and a third that checks the second
 
 **Pass 1 — a faithful transcript.** Speech to text, no interpretation.

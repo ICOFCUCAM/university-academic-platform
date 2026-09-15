@@ -45,6 +45,12 @@ for (const [name, prompt] of Object.entries(prompts)) {
   t.check(`${name}: when in doubt, preserve`,
     prompt.system.includes('preserve the original\nwording'), true);
   t.check(`${name}: preserve, don’t interfere`, prompt.system.includes('PRESERVE. DO NOT INTERFERE.'), true);
+  // THE LECTURER'S TERMINOLOGY IS AUTHORITATIVE, in every stage — a name
+  // normalised in the notes reaches the audio, the revision and the Course AI.
+  t.check(`${name}: terminology preservation`,
+    prompt.system.includes('LECTURER TERMINOLOGY PRESERVATION'), true);
+  t.check(`${name}: with the examples`,
+    prompt.system.includes('NOT Jehovah, NOT Yahweh, NOT Lord'), true);
   t.check(`${name}: adds no fact`, /may NOT|not allowed|NOT ALLOWED/i.test(prompt.system), true);
   t.check(`${name}: a hedge survives`, prompt.system.includes('"I believe X."'), true);
   t.check(`${name}: does not correct the lecturer`, prompt.system.includes('NOT YOURS TO CORRECT'), true);
@@ -57,6 +63,12 @@ for (const [name, prompt] of Object.entries(prompts)) {
   t.check(`${name}: no general-knowledge licence`,
     prompt.system.includes('no longer restricted to their lectures'), false);
 }
+
+t.section('And so do the two that answer students');
+t.check('the Course AI keeps the lecturer’s terms',
+  P.TUTOR_SYSTEM.includes('LECTURER TERMINOLOGY PRESERVATION'), true);
+t.check('…and the general explainer says where the two differ',
+  P.GENERAL_AI_SYSTEM.includes('LECTURER TERMINOLOGY PRESERVATION'), true);
 
 t.section('The Course AI answers from the course, or says it cannot');
 t.check('it has one corpus', P.TUTOR_SYSTEM.includes('That is the whole of\nyour knowledge for this conversation.'), true);

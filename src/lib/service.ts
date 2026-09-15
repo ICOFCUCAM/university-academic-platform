@@ -26,6 +26,7 @@ import { parseExtract, runTransformation } from './ai/transform';
 import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
+import { checkTerminology } from './ai/terminology';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
 import type { Store } from './data/store';
@@ -152,6 +153,16 @@ export async function runStage(
       });
       artefact.body = result.text;
       artefact.producedBy = result.producedBy;
+
+      // ---- THE TERMINOLOGY CHECK ---------------------------------------
+      //
+      // Mechanical, on every text stage, with no model consulted: did the
+      // lecturer's own terms survive? A substitution is invisible to the
+      // student who reads it, so it is made visible to the lecturer who can
+      // still stop it.
+      artefact.terminology = checkTerminology(source!.body ?? '', result.text, {
+        glossary: where.course.terminology,
+      });
 
       // ---- THE VERIFICATION PASS ---------------------------------------
       //

@@ -157,6 +157,10 @@ export const DEMO: Snapshot = {
     semester: 1,
     description: 'The cell as the unit of life: membranes, the genome, and how a cell pays for what it does.',
     lecturerIds: [LECTURER],
+    // The lecturer's own terms. On this demonstration course they are
+    // ordinary biology; on a theological course they are the names a
+    // substitution would destroy. The check is the same either way.
+    terminology: ['thylakoid', 'granum', 'stroma', 'rubisco', 'Calvin cycle'],
     status: 'running',
   }],
   people: [

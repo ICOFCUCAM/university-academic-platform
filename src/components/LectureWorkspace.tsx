@@ -298,6 +298,27 @@ export function LectureWorkspace({
               </div>
             )}
 
+            {/* THE LECTURER'S OWN WORDS. Counted, not judged — and shown
+                first, because a substituted name is invisible to the student
+                who reads it and obvious to the lecturer who wrote it. */}
+            {shown.terminology && shown.terminology.length > 0 && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm">
+                <p className="font-medium text-bad">
+                  {shown.terminology.length === 1
+                    ? 'One of your terms did not survive this transformation.'
+                    : `${shown.terminology.length} of your terms did not survive this transformation.`}
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-ink-soft">
+                  {shown.terminology.map((finding, i) => (
+                    <li key={i}>
+                      <span className="font-medium uppercase tracking-wide text-bad">{finding.kind}</span>
+                      {' · '}{finding.note}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* THE VERIFIER'S REPORT. Not "is the lecturer right" — "did
                 anything the lecturer said move". */}
             {shown.verification && (

@@ -91,6 +91,14 @@ If the lecturer taught that the Roman Empire fell because Christianity weakened
 its military, that is what the student receives. Whether it is sound is the
 lecturer's business, on the review screen, in their own words.
 
+**The lecturer's terminology is authoritative.** `Yahuah` stays `Yahuah`, never
+`Jehovah`, `Yahweh` or `Lord`; `Yahusha HaMashiach` is never `Jesus Christ`. The
+rule is in every prompt — and then the output is **checked by counting**, with
+no model consulted, because a rule a model is asked to follow is a rule nobody
+has watched. A substituted, dropped or respelled term is shown to the lecturer
+above everything else on the review screen, since the student who reads the
+substitution cannot see it.
+
 **The AI has permissions.** Think of it as RBAC for AI: every model call is
 made as a role — transformation, verifier, course tutor, general explainer —
 and `callAs` refuses the call when the role's conditions are not met. A
