@@ -5,6 +5,7 @@ import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { cohortOn, knowledgeBase, myProgressOn } from '@/lib/service';
 import { mayEnterCourse } from '@/lib/domain/ownership';
+import { translate } from '@/lib/i18n/ui';
 import { TodaysLearning } from '@/components/TodaysLearning';
 import { Card, Empty, PageHeader } from '@/components/ui';
 
@@ -27,7 +28,10 @@ export default async function CoursePage({ params }: { params: { id: string } })
   if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
-        <Empty title="Not your course" body="You are not enrolled on this course, so its material is not yours to read." />
+        <Empty
+          title={translate(actor.workingLanguage, 'course.notYours')}
+          body={translate(actor.workingLanguage, 'course.notYoursBody')}
+        />
       </div>
     );
   }

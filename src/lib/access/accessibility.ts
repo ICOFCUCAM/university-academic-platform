@@ -30,6 +30,8 @@
 //   synchronised and is not is worse than one that never claimed it.
 // ---------------------------------------------------------------------------
 
+import type { UIKey } from '../i18n/ui';
+
 export interface AccessibilitySettings {
   typeface: 'standard' | 'dyslexia-friendly';
   textSize: 'standard' | 'large' | 'larger';
@@ -50,67 +52,74 @@ export const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
   underlineLinks: false,
 };
 
-/** Every setting, with what each is for, so the screen is written from here. */
+/**
+ * Every setting, with what each is for, so the screen is written from here.
+ *
+ * THE WORDS ARE KEYS, NOT ENGLISH. A student who needs the dyslexia-friendly
+ * typeface needs the control that offers it to be in their own language more
+ * than most people do; leaving these as English strings in a library file is
+ * how a screen ends up half-translated. See i18n/ui.ts.
+ */
 export const ACCESSIBILITY_CHOICES: {
   key: keyof AccessibilitySettings;
-  label: string;
-  blurb: string;
-  options: { value: string | boolean; label: string }[];
+  label: UIKey;
+  blurb: UIKey;
+  options: { value: string | boolean; label: UIKey }[];
 }[] = [
   {
     key: 'textSize',
-    label: 'Text size',
-    blurb: 'Raises the prose most, since that is what is read for twenty minutes at a time, and lifts the interface’s small type with it. Rows wrap rather than the layout breaking.',
+    label: 'a11y.textSize',
+    blurb: 'a11y.textSize.blurb',
     options: [
-      { value: 'standard', label: 'Standard' },
-      { value: 'large', label: 'Large' },
-      { value: 'larger', label: 'Larger' },
+      { value: 'standard', label: 'a11y.standard' },
+      { value: 'large', label: 'a11y.large' },
+      { value: 'larger', label: 'a11y.larger' },
     ],
   },
   {
     key: 'typeface',
-    label: 'Typeface',
-    blurb: 'Wider letter and word spacing, looser lines, and a face already on your device — Atkinson Hyperlegible where it is installed, otherwise Verdana or Tahoma. No font is downloaded.',
+    label: 'a11y.typeface',
+    blurb: 'a11y.typeface.blurb',
     options: [
-      { value: 'standard', label: 'Standard' },
-      { value: 'dyslexia-friendly', label: 'Dyslexia-friendly' },
+      { value: 'standard', label: 'a11y.standard' },
+      { value: 'dyslexia-friendly', label: 'a11y.dyslexia' },
     ],
   },
   {
     key: 'contrast',
-    label: 'Contrast',
-    blurb: 'Darkens the text and the borders, and removes the tints behind panels.',
+    label: 'a11y.contrast',
+    blurb: 'a11y.contrast.blurb',
     options: [
-      { value: 'standard', label: 'Standard' },
-      { value: 'high', label: 'High contrast' },
+      { value: 'standard', label: 'a11y.standard' },
+      { value: 'high', label: 'a11y.highContrast' },
     ],
   },
   {
     key: 'motion',
-    label: 'Motion',
-    blurb: 'Spinners and transitions. “Follow my system” uses what your device already says.',
+    label: 'a11y.motion',
+    blurb: 'a11y.motion.blurb',
     options: [
-      { value: 'system', label: 'Follow my system' },
-      { value: 'reduced', label: 'Reduce motion' },
-      { value: 'full', label: 'Full motion' },
+      { value: 'system', label: 'a11y.followSystem' },
+      { value: 'reduced', label: 'a11y.reduceMotion' },
+      { value: 'full', label: 'a11y.fullMotion' },
     ],
   },
   {
     key: 'captions',
-    label: 'The spoken script',
-    blurb: 'Shows the words of an audio lesson beside it rather than behind a click. Not a timed caption track — see below.',
+    label: 'a11y.captions',
+    blurb: 'a11y.captions.blurb',
     options: [
-      { value: false, label: 'Behind a click' },
-      { value: true, label: 'Always shown' },
+      { value: false, label: 'a11y.behindClick' },
+      { value: true, label: 'a11y.alwaysShown' },
     ],
   },
   {
     key: 'underlineLinks',
-    label: 'Links',
-    blurb: 'Underlines every link, so a link is never signalled by colour alone.',
+    label: 'a11y.links',
+    blurb: 'a11y.links.blurb',
     options: [
-      { value: false, label: 'Underline on hover' },
-      { value: true, label: 'Always underlined' },
+      { value: false, label: 'a11y.underlineHover' },
+      { value: true, label: 'a11y.alwaysUnderlined' },
     ],
   },
 ];

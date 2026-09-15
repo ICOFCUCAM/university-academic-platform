@@ -6,6 +6,7 @@ import { Layers, Loader2, ListChecks, Headphones } from 'lucide-react';
 import { QuizRunner } from '@/components/QuizRunner';
 import { FlashcardDeck } from '@/components/FlashcardDeck';
 import { Markdown } from '@/components/Markdown';
+import { translator } from '@/lib/i18n/ui';
 import { Card, Empty } from '@/components/ui';
 
 interface AidView {
@@ -29,6 +30,10 @@ export function StudyRoom({
   aids: AidView[];
 }) {
   const router = useRouter();
+  // THE STUDENT'S SCREENS ARE IN THE STUDENT'S LANGUAGE. A French cohort
+  // revising from French notes under English buttons is not a multilingual
+  // platform; it is English software with translated documents in it.
+  const t = translator(language);
   const [open, setOpen] = useState<string | null>(aids[0]?.id ?? null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +64,9 @@ export function StudyRoom({
     <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
       <aside className="space-y-4">
         <Card className="px-4 py-4">
-          <h2 className="text-sm font-semibold">Make something</h2>
+          <h2 className="text-sm font-semibold">{t('study.makeSomething')}</h2>
           <p className="mt-1 text-xs text-ink-soft">
-            From the lectures you choose. If somebody on this course has already made it in your
-            language, you get theirs — the same questions, not a different paper.
+            {t('study.fromLectures')}
           </p>
 
           <div className="mt-3 flex flex-wrap gap-1">
@@ -87,9 +91,9 @@ export function StudyRoom({
 
           <div className="mt-3 space-y-1.5">
             {([
-              ['test', 'A 10-question quiz', ListChecks],
-              ['flashcards', 'Flashcards', Layers],
-              ['audio_revision', 'A 15-minute audio revision', Headphones],
+              ['test', t('study.makeQuiz'), ListChecks],
+              ['flashcards', t('study.makeFlashcards'), Layers],
+              ['audio_revision', t('study.makeAudio'), Headphones],
             ] as const).map(([kind, label, Icon]) => (
               <button
                 key={kind} type="button" onClick={() => make(kind)}
@@ -106,7 +110,7 @@ export function StudyRoom({
 
         {aids.length > 0 && (
           <Card className="px-4 py-4">
-            <h2 className="text-sm font-semibold">On the shelf</h2>
+            <h2 className="text-sm font-semibold">{t('study.onTheShelf')}</h2>
             <ul className="mt-2 space-y-1">
               {aids.map((aid) => (
                 <li key={aid.id}>
@@ -117,7 +121,7 @@ export function StudyRoom({
                     }`}
                   >
                     {aid.title}
-                    {aid.unreviewed && <span className="block text-[10px] text-ink-faint">not read by a lecturer</span>}
+                    {aid.unreviewed && <span className="block text-[10px] text-ink-faint">{t('study.notReviewed')}</span>}
                   </button>
                 </li>
               ))}
@@ -129,8 +133,8 @@ export function StudyRoom({
       <div>
         {!showing ? (
           <Empty
-            title="Nothing on the shelf yet"
-            body="Choose the lectures you are revising and make a quiz, a set of flashcards, or an audio revision."
+            title={t('study.nothingOnShelf')}
+            body={t('study.chooseLectures')}
           />
         ) : showing.kind === 'test' ? (
           <QuizRunner
@@ -140,7 +144,7 @@ export function StudyRoom({
         ) : showing.kind === 'flashcards' ? (
           <Card className="p-6">
             <h2 className="mb-4 font-semibold">{showing.title}</h2>
-            <FlashcardDeck studyAidId={showing.id} body={showing.body} dir={dir} />
+            <FlashcardDeck studyAidId={showing.id} body={showing.body} dir={dir} language={showing.language} />
           </Card>
         ) : (
           <Card className="p-6" dir={dir}>

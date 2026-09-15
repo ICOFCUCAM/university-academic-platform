@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Award, BookOpen, Globe } from 'lucide-react';
 import { getStore } from '@/lib/data';
+import { currentActor } from '@/lib/session';
+import { translate } from '@/lib/i18n/ui';
 import { catalogue } from '@/lib/service';
 import { LANGUAGE_BY_CODE } from '@/lib/i18n/languages';
 import { Card, Empty, PageHeader } from '@/components/ui';
@@ -20,14 +22,17 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Catalogue() {
   const store = getStore();
+  const actor = await currentActor();
+  const reader = actor.workingLanguage;
   const [courses, university] = await Promise.all([catalogue(store), store.university()]);
 
   return (
     <div>
       <PageHeader
         eyebrow={university.name}
-        title="Open courses"
-        subtitle="Courses this institution has opened beyond its own cohort. One lecture, every language it has been published in — and the lecturer’s name on all of it."
+        title={translate(reader, 'catalogue.title')}
+        subtitle={translate(reader, 'catalogue.subtitle')}
+        lang={reader ?? 'en'}
       />
 
       <div className="px-6 py-6 md:px-8">
@@ -57,7 +62,7 @@ export default async function Catalogue() {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-ink-soft">
                   <span className="inline-flex items-center gap-1.5">
                     <BookOpen size={13} />
-                    {course.lectures} lecture{course.lectures === 1 ? '' : 's'} published
+                    {course.lectures} · {translate(reader, 'catalogue.published')}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Globe size={13} />
@@ -68,7 +73,7 @@ export default async function Catalogue() {
                   </span>
                   {course.certifies && (
                     <span className="inline-flex items-center gap-1.5 text-ok">
-                      <Award size={13} /> Certificate on completion
+                      <Award size={13} /> {translate(reader, 'catalogue.certificate')}
                     </span>
                   )}
                 </div>
@@ -79,7 +84,7 @@ export default async function Catalogue() {
                       href={`/courses/${course.id}`}
                       className="rounded-md bg-brand px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-dark"
                     >
-                      Open the course
+                      {translate(reader, 'catalogue.open')}
                     </Link>
                   ) : (
                     <>
@@ -92,7 +97,7 @@ export default async function Catalogue() {
                           a catalogue implying otherwise would be the one page on
                           this platform that lied. */}
                       <span className="text-xs text-ink-faint">
-                        Enrolment is arranged with the institution — this platform takes no payments.
+                        {translate(reader, 'catalogue.noPayments')}
                       </span>
                     </>
                   )}

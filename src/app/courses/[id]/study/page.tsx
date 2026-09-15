@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { direction } from '@/lib/i18n/languages';
+import { translate } from '@/lib/i18n/ui';
 import { mayEnterCourse } from '@/lib/domain/ownership';
 import { StudyRoom } from '@/components/StudyRoom';
 import { Empty, PageHeader } from '@/components/ui';
@@ -19,7 +20,10 @@ export default async function Study({ params }: { params: { id: string } }) {
   if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
-        <Empty title="Not your course" body="Revision material is for the people on the course." />
+        <Empty
+          title={translate(actor.workingLanguage, 'course.notYours')}
+          body={translate(actor.workingLanguage, 'course.notYoursBody')}
+        />
       </div>
     );
   }
@@ -37,10 +41,14 @@ export default async function Study({ params }: { params: { id: string } }) {
 
   return (
     <div>
+      {/* IN THE STUDENT'S LANGUAGE, and `lang` says so, so a right-to-left
+          reader gets a right-to-left heading rather than an English one
+          laid out backwards. */}
       <PageHeader
         eyebrow={course.code}
-        title="Revision"
-        subtitle="Quizzes, flashcards and audio revision, built from this course’s own lectures — and from nothing else."
+        title={translate(language, 'study.title')}
+        subtitle={translate(language, 'study.subtitle')}
+        lang={language}
       />
       <div className="px-6 py-6 md:px-8">
         <StudyRoom

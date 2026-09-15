@@ -3,6 +3,7 @@ import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { knowledgeBase } from '@/lib/service';
 import { mayEnterCourse } from '@/lib/domain/ownership';
+import { translate } from '@/lib/i18n/ui';
 import { CourseChat } from '@/components/CourseChat';
 import { Empty, PageHeader } from '@/components/ui';
 
@@ -18,7 +19,10 @@ export default async function CourseAIPage({ params }: { params: { id: string } 
   if (!mayEnterCourse(actor, course, enrolment)) {
     return (
       <div className="px-6 py-10 md:px-8">
-        <Empty title="Not your course" body="The Course AI answers for the people on the course." />
+        <Empty
+          title={translate(actor.workingLanguage, 'course.notYours')}
+          body={translate(actor.workingLanguage, 'course.notYoursBody')}
+        />
       </div>
     );
   }

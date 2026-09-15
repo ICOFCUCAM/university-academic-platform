@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { LearningProfile } from '@/components/LearningProfile';
+import { translate } from '@/lib/i18n/ui';
 import { PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -14,9 +15,10 @@ export default async function Profile() {
   return (
     <div>
       <PageHeader
-        eyebrow="My learning profile"
+        eyebrow={translate(person.workingLanguage, 'profile.title')}
         title={person.name}
-        subtitle="One working language, and a voice you choose. The first is your academic environment; the second is only how it sounds."
+        subtitle={translate(person.workingLanguage, 'profile.subtitle')}
+        lang={person.workingLanguage ?? 'en'}
       />
       <div className="px-6 py-6 md:px-8">
         <LearningProfile person={person} isStudent={person.role === 'student'} />

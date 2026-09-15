@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Loader2, RotateCw } from 'lucide-react';
 import { parseFlashcards, type Flashcard } from '@/lib/study/flashcards';
+import { translator } from '@/lib/i18n/ui';
 
 interface Deck {
   due: Flashcard[];
@@ -24,7 +25,14 @@ interface Deck {
  * screen has something on it; "you are up to date" is the honest answer, and
  * the student can still ask for the whole set if they want it.
  */
-export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; body: string; dir: 'ltr' | 'rtl' }) {
+export function FlashcardDeck({
+  studyAidId, body, dir, language,
+}: {
+  studyAidId: string; body: string; dir: 'ltr' | 'rtl';
+  /** The language the cards are in, which is the language to speak in. */
+  language?: string;
+}) {
+  const t = translator(language);
   const all = useMemo(() => parseFlashcards(body), [body]);
   const [deck, setDeck] = useState<Deck | null>(null);
   const [failed, setFailed] = useState(false);
@@ -102,16 +110,16 @@ export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; b
     return (
       <div dir={dir} className="rounded-lg border border-page-line bg-page-card p-8 text-center">
         <p className="font-medium">
-          {queue.length ? 'That is this set done for today.' : 'Nothing is due from this set today.'}
+          {t('study.nothingDue')}
         </p>
         {when && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
-            <CalendarClock size={14} /> {deck?.resting} card{deck?.resting === 1 ? '' : 's'} come back on {when}.
+            <CalendarClock size={14} /> {deck?.resting} · {t('study.comesBack')} {when}
           </p>
         )}
         {deck && (
           <p className="mt-3 text-xs text-ink-faint">
-            {deck.held} held · {deck.learning} still being learned · {deck.unseen} not yet seen
+            {deck.held} {t('study.held')} · {deck.learning} {t('study.learning')} · {deck.unseen} {t('study.unseen')}
           </p>
         )}
         {!everything && (
@@ -120,7 +128,7 @@ export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; b
             onClick={goThroughEverything}
             className="mt-5 rounded border border-page-line px-3.5 py-2 text-xs text-ink-soft hover:border-brand/40"
           >
-            Go through all {all.length} anyway
+            {t('study.goThroughAll')} ({all.length})
           </button>
         )}
       </div>
@@ -133,8 +141,8 @@ export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; b
     <div dir={dir}>
       {!failed && deck && at === 0 && !everything && (
         <p className="mb-3 text-xs text-ink-faint">
-          {deck.due.length} due · {deck.fresh.length} new
-          {deck.resting ? ` · ${deck.resting} resting` : ''}
+          {deck.due.length} {t('study.dueToday')} · {deck.fresh.length} {t('study.newCards')}
+          {deck.resting ? ` · ${deck.resting} ${t('study.resting')}` : ''}
         </p>
       )}
 
@@ -147,7 +155,8 @@ export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; b
         <p className="mt-3 flex items-center gap-1 text-[11px] uppercase tracking-wide text-ink-faint">
           {/* What the label names is what turning it over will show, which
               reading the screen back makes ambiguous unless it says so. */}
-          <RotateCw size={11} /> Turn it over for {showBack ? 'the term' : 'the definition'}
+          <RotateCw size={11} /> {t('study.turnOverFor')}{' '}
+          {showBack ? t('study.theTerm') : t('study.theDefinition')}
         </p>
       </button>
 
@@ -161,14 +170,14 @@ export function FlashcardDeck({ studyAidId, body, dir }: { studyAidId: string; b
             onClick={() => { void answer(true); }}
             className="rounded border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-ok"
           >
-            I knew it
+            {t('study.knewIt')}
           </button>
           <button
             type="button"
             onClick={() => { void answer(false); }}
             className="rounded border border-page-line px-3 py-1.5 text-xs text-ink-soft"
           >
-            Again later
+            {t('study.againLater')}
           </button>
         </div>
       </div>

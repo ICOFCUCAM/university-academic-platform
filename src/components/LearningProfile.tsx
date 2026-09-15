@@ -7,6 +7,7 @@ import type { Person } from '@/lib/domain/types';
 import { LANGUAGE_BY_CODE } from '@/lib/i18n/languages';
 import { PLATFORM_VOICES, SPEEDS } from '@/lib/voice/voices';
 import { ACCESSIBILITY_CHOICES, settingsOf } from '@/lib/access/accessibility';
+import { fill, translator } from '@/lib/i18n/ui';
 import { Card } from '@/components/ui';
 
 /**
@@ -22,6 +23,9 @@ import { Card } from '@/components/ui';
  */
 export function LearningProfile({ person, isStudent }: { person: Person; isStudent: boolean }) {
   const router = useRouter();
+  // In their own language, because this is the screen where a student is told
+  // that their language is not theirs to change.
+  const t = translator(person.workingLanguage);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const language = person.workingLanguage;
@@ -49,7 +53,7 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
 
       <Card className="px-5 py-4">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Globe size={16} className="text-brand" /> Working language
+          <Globe size={16} className="text-brand" /> {t('profile.workingLanguage')}
         </h2>
         <p className="mt-2 text-2xl font-semibold">
           {language ? LANGUAGE_BY_CODE[language]?.endonym ?? language : 'Not set'}
@@ -57,39 +61,41 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
         <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-faint">
           <Lock size={12} />
           {isStudent
-            ? 'Your notes, transcripts, audio, quizzes, flashcards and the Course AI all arrive in this language. Changing it is a registry matter, so that a term is studied in one language.'
+            ? t('profile.lockedByRegistry')
             : 'The language this account works in.'}
         </p>
         {lastChange && (
           <p className="mt-2 rounded border border-page-line bg-page px-3 py-2 text-xs text-ink-soft">
-            Changed to {LANGUAGE_BY_CODE[lastChange.to]?.name ?? lastChange.to}
-            {lastChange.byName ? ` by ${lastChange.byName}` : ''} — “{lastChange.reason}”.
+            {fill(t('profile.changedBy'), {
+              language: LANGUAGE_BY_CODE[lastChange.to]?.endonym ?? lastChange.to,
+              who: lastChange.byName ?? '—',
+              reason: lastChange.reason,
+            })}
           </p>
         )}
       </Card>
 
       <Card className="px-5 py-4">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Headphones size={16} className="text-brand" /> Listening
+          <Headphones size={16} className="text-brand" /> {t('profile.listening')}
         </h2>
         <p className="mt-1 text-xs text-ink-soft">
-          A voice changes how a lesson sounds and nothing about what it says, so this one is yours
-          to change whenever you like.
+          {t('profile.voiceIsYours')}
         </p>
 
-        <label className="mt-3 block text-[11px] uppercase tracking-wide text-ink-faint">Preferred voice</label>
+        <label className="mt-3 block text-[11px] uppercase tracking-wide text-ink-faint">{t('profile.preferredVoice')}</label>
         <select
           className="mt-1 w-full rounded-md border border-page-line px-3 py-2 text-sm"
           value={person.voicePreference ?? ''}
           onChange={(event) => save({ action: 'listening', voice: event.target.value })}
           disabled={busy}
         >
-          <option value="">No preference — the course’s own voice</option>
-          <option value="lecturer">The lecturer’s voice, where they have authorised it</option>
+          <option value="">{t('profile.noPreference')}</option>
+          <option value="lecturer">{t('profile.lecturerVoice')}</option>
           {PLATFORM_VOICES.map((v) => <option key={v.id} value={v.id}>{v.label} — {v.blurb}</option>)}
         </select>
 
-        <label className="mt-3 block text-[11px] uppercase tracking-wide text-ink-faint">Speed</label>
+        <label className="mt-3 block text-[11px] uppercase tracking-wide text-ink-faint">{t('profile.speed')}</label>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {SPEEDS.map((speed) => (
             <button
@@ -108,12 +114,10 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
 
       <Card className="px-5 py-4 lg:col-span-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Accessibility size={16} className="text-brand" /> Reading and using this platform
+          <Accessibility size={16} className="text-brand" /> {t('profile.reading')}
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          These are yours. Nobody sets them for you, and no screen anywhere reports them to your
-          lecturers or to the registry. They change how a page is presented and never a word of
-          what it says.
+          {t('profile.yoursAlone')}
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -121,7 +125,7 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
             const current = settingsOf(person.accessibility)[choice.key];
             return (
               <div key={choice.key}>
-                <p className="text-[11px] uppercase tracking-wide text-ink-faint">{choice.label}</p>
+                <p className="text-[11px] uppercase tracking-wide text-ink-faint">{t(choice.label)}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {choice.options.map((option) => (
                     <button
@@ -132,11 +136,11 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
                           ? 'border-brand bg-brand text-white' : 'border-page-line text-ink-soft'
                       }`}
                     >
-                      {option.label}
+                      {t(option.label)}
                     </button>
                   ))}
                 </div>
-                <p className="mt-1.5 text-xs text-ink-faint">{choice.blurb}</p>
+                <p className="mt-1.5 text-xs text-ink-faint">{t(choice.blurb)}</p>
               </div>
             );
           })}
@@ -145,9 +149,7 @@ export function LearningProfile({ person, isStudent }: { person: Person; isStude
         {/* SAYING WHAT THIS IS NOT. A caption that claims to be synchronised
             and is not is worse than one that never claimed it. */}
         <p className="mt-4 rounded border border-page-line bg-page px-3 py-2 text-xs text-ink-soft">
-          “Always shown” puts the spoken script beside the audio. It is not a timed caption track:
-          the speech services this platform talks to return audio and a length, not word timings,
-          so nothing here highlights a word as it is said.
+          {t('profile.captionsNote')}
         </p>
       </Card>
 
