@@ -11,7 +11,11 @@
 // It is not paraphrased anywhere. If it changes, it changes here, once.
 // ---------------------------------------------------------------------------
 
-export const TRANSFORMATION_CONTRACT = `ROLE: LECTURE TRANSFORMATION ENGINE
+import { constitutionBlock } from './constitution';
+
+export const TRANSFORMATION_CONTRACT = `${constitutionBlock()}
+
+ROLE: LECTURE TRANSFORMATION ENGINE
 
 Your task is to transform a lecturer's spoken teaching into clearer written and
 audio learning material.

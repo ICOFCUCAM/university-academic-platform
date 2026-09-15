@@ -8,6 +8,45 @@ against the code.
 
 ---
 
+## 0. The AI Transformation Constitution
+
+The rules every AI operation obeys, whichever model is eventually chosen. They
+are in `src/lib/ai/constitution.ts`, in order of precedence, and each article
+**names the files that enforce it** — `constitution.test.mjs` opens them.
+
+| | Article | Enforced by |
+|---|---|---|
+| 1 | **Source preservation** — the lecturer's recording and transcript are the source; everything is derived from them and owned by them | `domain/ownership.ts`, `pipeline/stages.ts` |
+| 2 | **Meaning preservation** — language and structure may improve; meaning may not change | `ai/contract.ts`, `ai/operations.ts`, `ai/verify.ts` |
+| 3 | **Terminology preservation** — names, terms, spellings and capitalisation are preserved exactly | `ai/terminology.ts` |
+| 4 | **No unrequested knowledge injection** — no outside fact, correction, opinion, counterargument or explanation | `ai/contract.ts`, `ai/operations.ts`, `ai/roles.ts` |
+| 5 | **No silent normalisation** — unfamiliar terminology is never replaced with something more conventional | `ai/terminology.ts`, `ai/unusual.ts` |
+| 6 | **Traceability** — every note, script and lesson traces to the lecture, the artefact and the version it came from | `domain/types.ts`, `pipeline/stages.ts` |
+| 7 | **Explicit separation** — general knowledge only when a student asks, and always labelled | `ai/roles.ts`, `ai/tutor.ts` |
+
+> Yahuah remains Yahuah. Yahusha HaMashiach remains Yahusha HaMashiach. No model
+> overrides that because of its pretrained vocabulary.
+
+### Article 3 is not enforced by asking
+
+```
+LECTURE → TRANSCRIPTION → TERM PROTECTION → AI TRANSFORMATION
+                        → TERM VALIDATION → PUBLISHED CONTENT
+```
+
+**Protection**: every protected term is replaced by an opaque marker before the
+text is sent. The model never has the lecturer's term in front of it, so there
+is nothing for a pretrained habit to reach for, and the longest term is
+protected whole — `Yahusha HaMashiach` is one marker, never `Yahusha` followed
+by a word the model may then normalise.
+
+**Validation**: after restoration, a substituted term or a protected term that
+did not come back is **not a finding for the lecturer to weigh**. The output is
+rejected: the stage reads as failed, with the reason on it, and nothing is
+published. A dropped or respelled term short of that is reported and left to
+the lecturer, because a summary legitimately uses a term fewer times than the
+lecture did.
+
 ## 1. The four products inside this one
 
 | | What it is | Where it lives |

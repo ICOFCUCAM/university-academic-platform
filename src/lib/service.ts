@@ -26,7 +26,7 @@ import { parseExtract, runTransformation } from './ai/transform';
 import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
-import { checkTerminology } from './ai/terminology';
+import { protectTerms, restoreTerms, validateTerminology } from './ai/terminology';
 import { applyDecisions, findUnusual, type WordDecision } from './ai/unusual';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
@@ -159,22 +159,44 @@ export async function runStage(
       const knowledge = kind === 'structured_notes'
         ? existing.find((a) => a.kind === 'knowledge_extract')?.body
         : undefined;
+
+      // ---- TERM PROTECTION ---------------------------------------------
+      //
+      //   … → TERM PROTECTION → AI TRANSFORMATION → TERM VALIDATION → …
+      //
+      // The lecturer's terms are replaced by opaque markers BEFORE the model
+      // sees the text, so there is nothing in front of it to normalise. A
+      // rule in a prompt is a request; this is not one.
+      const guarded = protectTerms(source!.body ?? '', { glossary: where.course.terminology });
+
       const result = await runTransformation(e, {
-        kind, context, source: source!.body ?? '', knowledge,
+        kind, context, source: guarded.text, knowledge,
         mode: options.mode, persona: options.persona, revision: options.revision,
       });
-      artefact.body = result.text;
+
+      const restored = restoreTerms(result.text, guarded.markers);
       artefact.producedBy = result.producedBy;
 
-      // ---- THE TERMINOLOGY CHECK ---------------------------------------
+      // ---- TERM VALIDATION ---------------------------------------------
       //
-      // Mechanical, on every text stage, with no model consulted: did the
-      // lecturer's own terms survive? A substitution is invisible to the
-      // student who reads it, so it is made visible to the lecturer who can
-      // still stop it.
-      artefact.terminology = checkTerminology(source!.body ?? '', result.text, {
+      // And the hard boundary. A term substituted, or a protected term that
+      // did not come back, is not a finding for the lecturer to weigh: the
+      // output is REJECTED rather than published, and the stage reads as
+      // failed with the reason on it.
+      const validation = validateTerminology(source!.body ?? '', restored.text, {
         glossary: where.course.terminology,
+        missingProtected: restored.missing,
       });
+      artefact.terminology = validation.findings;
+
+      if (!validation.ok) {
+        artefact.state = 'failed';
+        artefact.error = validation.rejection;
+        artefact.updatedAt = now();
+        return store.saveArtefact(artefact);
+      }
+
+      artefact.body = restored.text;
 
       // ---- THE VERIFICATION PASS ---------------------------------------
       //
@@ -183,12 +205,12 @@ export async function runStage(
       // reviews a report of changes rather than re-reading twelve thousand
       // words against twelve thousand words.
       if (kind === 'corrected_text') {
-        artefact.verification = await verifyTransformation(e, source!.body ?? '', result.text);
+        artefact.verification = await verifyTransformation(e, source!.body ?? '', restored.text);
       }
 
       // The extraction is not read by a person; it is merged into the course.
       if (kind === 'knowledge_extract') {
-        const extract = parseExtract(result.text, {
+        const extract = parseExtract(restored.text, {
           id: lecture.id, sequence: lecture.sequence, title: lecture.title,
         });
         await store.saveExtract(lecture.courseId, extract);

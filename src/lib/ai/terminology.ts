@@ -79,6 +79,90 @@ replaced, regularised or expanded:
 ${glossary.map((term) => `  • ${term}`).join('\n')}`;
 }
 
+// ---------------------------------------------------------------------------
+// TERM PROTECTION — before the model ever sees the text.
+//
+//   LECTURE → TRANSCRIPTION → TERM PROTECTION → AI TRANSFORMATION
+//           → TERM VALIDATION → PUBLISHED CONTENT
+//
+// A rule in a prompt is a request. This is not a request: each protected term
+// is replaced by an opaque marker before the text is sent, and restored after.
+// The model never has the lecturer's term in front of it to normalise, and a
+// marker is not a word any vocabulary contains, so there is nothing for a
+// pretrained habit to reach for.
+//
+// WHY MARKERS AND NOT JUST CHECKING AFTERWARDS. Checking afterwards catches the
+// substitution — and then the run is wasted, the lecturer is interrupted, and
+// the cost has been paid. Protection means the common case never happens;
+// validation is what catches the case where it somehow did.
+// ---------------------------------------------------------------------------
+
+export interface Protection {
+  /** The text with each protected term replaced by its marker. */
+  text: string;
+  /** marker → the lecturer's exact term, capitalisation and all. */
+  markers: Record<string, string>;
+}
+
+/**
+ * Markers are deliberately ugly and deliberately stable: a model asked to
+ * tidy prose leaves ⟦T1⟧ alone, and if it does not, `restoreTerms` can tell.
+ */
+const MARKER = (n: number) => `⟦T${n}⟧`;
+
+export function protectTerms(
+  text: string, options: { glossary?: string[]; rules?: TermRule[] } = {},
+): Protection {
+  const terms = [
+    ...(options.rules ?? DEFAULT_TERM_RULES).map((r) => r.term),
+    ...(options.glossary ?? []),
+  ]
+    // Longest first, so "Yahusha HaMashiach" is protected as one term rather
+    // than as "Yahusha" followed by a word the model may then normalise.
+    .sort((a, b) => b.length - a.length);
+
+  const markers: Record<string, string> = {};
+  let out = text;
+  let n = 0;
+
+  for (const term of terms) {
+    if (!term.trim()) continue;
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`\\b${escaped}\\b`, 'g');
+    if (!pattern.test(out)) continue;
+    pattern.lastIndex = 0;
+    const marker = MARKER(++n);
+    markers[marker] = term;
+    out = out.replace(pattern, marker);
+  }
+
+  return { text: out, markers };
+}
+
+export interface Restoration {
+  text: string;
+  /** Markers the model lost or mangled. Each one is a term that went missing. */
+  missing: string[];
+}
+
+export function restoreTerms(text: string, markers: Record<string, string>): Restoration {
+  let out = text;
+  const missing: string[] = [];
+
+  for (const [marker, term] of Object.entries(markers)) {
+    if (!out.includes(marker)) {
+      missing.push(term);
+      continue;
+    }
+    out = out.split(marker).join(term);
+  }
+
+  // A marker the transformation invented, or mangled into ⟦T12⟧ from ⟦T1⟧:
+  // left visible rather than silently deleted, because a reader seeing it
+  // knows something went wrong, and a reader seeing nothing does not.
+  return { text: out, missing };
+}
+
 export type FindingKind = 'substituted' | 'dropped' | 'respelled';
 
 export interface TerminologyFinding {
@@ -91,13 +175,16 @@ export interface TerminologyFinding {
   note: string;
 }
 
-const count = (haystack: string, needle: string): number => {
+const count = (haystack: string, needle: string, anyCase = false): number => {
   if (!needle.trim()) return 0;
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Word boundaries so "Lord" does not match "Landlord", and case-sensitive
-  // where the term itself carries capitals — "yahuah" for "Yahuah" is a
-  // respelling worth seeing.
-  return (haystack.match(new RegExp(`\\b${escaped}\\b`, 'g')) ?? []).length;
+  // Word boundaries so "Lord" does not match "Landlord".
+  //
+  // CASE MATTERS FOR A TERM AND NOT FOR A SUBSTITUTE. "yahuah" where the
+  // lecturer wrote "Yahuah" is a respelling worth seeing; "the Lord" where the
+  // lecturer wrote "Yahuah" is a substitution whether the model capitalised it
+  // as "the LORD", "the Lord" or "the lord".
+  return (haystack.match(new RegExp(`\\b${escaped}\\b`, anyCase ? 'gi' : 'g')) ?? []).length;
 };
 
 /**
@@ -139,8 +226,8 @@ export function checkTerminology(
       const standalone = (text: string) => {
         const longer = everySubstitute
           .filter((other) => other !== substitute && other.includes(substitute))
-          .reduce((sum, other) => sum + count(text, other), 0);
-        return Math.max(0, count(text, substitute) - longer);
+          .reduce((sum, other) => sum + count(text, other, true), 0);
+        return Math.max(0, count(text, substitute, true) - longer);
       };
       const substituteInSource = standalone(source);
       const substituteInOutput = standalone(output);
@@ -191,4 +278,53 @@ export function checkTerminology(
   }
 
   return findings;
+}
+
+
+// ---------------------------------------------------------------------------
+// TERM VALIDATION — after the model, before anything is published.
+// ---------------------------------------------------------------------------
+
+export interface Validation {
+  ok: boolean;
+  findings: TerminologyFinding[];
+  /** Set when the output must be rejected rather than reviewed. */
+  rejection?: string;
+}
+
+/**
+ * THE HARD BOUNDARY. A substituted term or a protected term that did not come
+ * back is not a finding for the lecturer to weigh: it is a failed
+ * transformation, and the output is rejected rather than published.
+ *
+ * A dropped or respelled term short of that is reported and left to the
+ * lecturer — a summary legitimately uses a term fewer times than the lecture
+ * did, and rejecting on a count would make the layer unusable.
+ */
+export function validateTerminology(
+  source: string, output: string,
+  options: { glossary?: string[]; rules?: TermRule[]; missingProtected?: string[] } = {},
+): Validation {
+  const findings = checkTerminology(source, output, options);
+  const substituted = findings.filter((f) => f.kind === 'substituted');
+  const missing = options.missingProtected ?? [];
+
+  if (substituted.length) {
+    const first = substituted[0];
+    return {
+      ok: false,
+      findings,
+      rejection: `The transformation replaced “${first.term}” with “${first.instead}”. The lecturer’s terminology is authoritative, so this output was rejected rather than published.`,
+    };
+  }
+
+  if (missing.length) {
+    return {
+      ok: false,
+      findings,
+      rejection: `The transformation lost ${missing.map((t) => `“${t}”`).join(', ')} — ${missing.length === 1 ? 'a protected term' : 'protected terms'} that must appear unchanged. This output was rejected rather than published.`,
+    };
+  }
+
+  return { ok: true, findings };
 }

@@ -91,6 +91,12 @@ If the lecturer taught that the Roman Empire fell because Christianity weakened
 its military, that is what the student receives. Whether it is sound is the
 lecturer's business, on the review screen, in their own words.
 
+**There is a constitution, and it is enforced in code.** Seven articles —
+source preservation, meaning preservation, terminology preservation, no
+unrequested knowledge injection, no silent normalisation, traceability,
+explicit separation — each naming the files that make it true, with a test that
+opens them (`src/lib/ai/constitution.ts`).
+
 **The lecturer's terminology is authoritative.** `Yahuah` stays `Yahuah`, never
 `Jehovah`, `Yahweh` or `Lord`; `Yahusha HaMashiach` is never `Jesus Christ`. The
 rule is in every prompt — and then the output is **checked by counting**, with
