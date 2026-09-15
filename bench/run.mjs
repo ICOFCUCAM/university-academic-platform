@@ -36,19 +36,26 @@ async function load(rel) {
 
 const args = process.argv.slice(2);
 const only = args.find((a) => a.startsWith('--kind='))?.split('=')[1];
+const vendor = args.find((a) => a.startsWith('--vendor='))?.split('=')[1] ?? 'claude';
+const namedModel = args.find((a) => a.startsWith('--model='))?.split('=')[1];
 const asJson = args.includes('--json');
 
 const { engine } = await load('ai/engine.ts');
 const { runTransformation } = await load('ai/transform.ts');
 const { verifyTransformation } = await load('ai/verify.ts');
+const { modelFor } = await load('ai/otherVendors.ts');
 
-const e = engine();
-const wired = e.describe();
+// THE SAME HARNESS FOR ALL THREE. The prompts, the cases and the scoring do not
+// know which vendor is answering — which is the only way the comparison means
+// anything.
+const base = engine();
+const e = vendor === 'claude' ? base : { ...base, model: modelFor(vendor, namedModel), live: true };
+const wired = vendor === 'claude' ? base.describe() : { model: e.model.id, live: true };
 
 if (!wired.live) {
   console.error(
     '\nNo language model is configured, so there is nothing to benchmark.\n' +
-    'Set ANTHROPIC_API_KEY (or point ACADEMIC_AI_MODEL at another adapter) and run again.\n',
+    'Set ANTHROPIC_API_KEY, or run with --vendor=openai / --vendor=gemini and that vendor’s key.\n',
   );
   process.exit(2);
 }
@@ -106,7 +113,7 @@ if (asJson) {
   process.exit(results.every((r) => r.passed) ? 0 : 1);
 }
 
-console.log(`\nLecture Preservation Benchmark — ${wired.model}\n`);
+console.log(`\nLecture Preservation Benchmark — ${wired.model} (${vendor})\n`);
 const width = Math.max(...results.map((r) => r.id.length));
 for (const r of results) {
   const mark = r.passed ? 'PASS' : 'FAIL';

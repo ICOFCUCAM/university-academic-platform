@@ -14,18 +14,35 @@ capable it is, because this product's promise is that what a student reads is
 what their lecturer taught.
 
 ```bash
-npm run bench                     # every case, against the configured model
-npm run bench -- --kind=opinion   # one family
-npm run bench -- --json           # machine-readable, for a sweep
+npm run bench                          # every case, against Claude
+npm run bench -- --vendor=openai       # …against OpenAI (OPENAI_API_KEY)
+npm run bench -- --vendor=gemini       # …against Gemini (GEMINI_API_KEY)
+npm run bench -- --kind=opinion        # one family
+npm run bench -- --json                # machine-readable, for a sweep
+npm run test:bench                     # the cases themselves, in milliseconds
 ```
+
+The harness does not know which vendor is answering — same prompts, same cases,
+same scoring — which is the only way the comparison means anything. The two
+non-Claude adapters are in `src/lib/ai/otherVendors.ts`: one REST call each,
+no SDKs, and **not verified against either service**, because this environment
+has no keys for them.
 
 With no model configured it refuses rather than reporting a score.
 
 ## The cases
 
-Sixteen passages, two per family, each chosen to tempt a model into being
-helpful. `bench/cases.mjs`; the specification calls for around fifty, and the
-list is meant to grow — a real lecture that tripped a model belongs here.
+**Forty-nine passages**, four to eight per family, each chosen to tempt a model
+into being helpful. `bench/cases.mjs`, and the list is meant to grow: a real
+lecture that tripped a model belongs here.
+
+Two kinds of expectation. Most cases are **preserve** — what must survive is in
+the source, and the interference must not appear. The grammar family is
+**fix**: the fault is in the source and the model is expected to correct it,
+because a model too frightened to touch anything is as useless as one that
+rewrites. `npm run test:bench` validates every case against its own rule in
+milliseconds, and it has already caught three cases that could never have
+passed and one that could never have failed.
 
 | Family | The temptation | Expected |
 |---|---|---|

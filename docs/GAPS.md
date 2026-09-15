@@ -75,8 +75,8 @@ Three kinds of entry:
 | | State |
 |---|---|
 | **The preservation benchmark** | Built, **never run.** This environment has no API key. Nothing in `bench/` is a result. |
-| **Case coverage** | 16 cases against the specification's ~50. All eight families are represented, two each. |
-| **Gemini and OpenAI adapters** | **Not built.** Each is one file against `LanguageModel`; until they exist the benchmark can only score Claude. |
+| **Case coverage** | **49 cases**, four to eight per family, each validated in milliseconds by `npm run test:bench` — which caught three cases that could never have passed. |
+| **Gemini and OpenAI adapters** | **Built** (`ai/otherVendors.ts`), one REST call each, driven by `--vendor=`. Not verified against either service: no keys here. |
 | **The scorecard** | Empty. No model has been measured on meaning preservation, unwanted corrections, hallucination, grammar or structure. |
 | **The verification pass** | Built, never exercised against a live model. Its own accuracy — does it catch a real alteration, does it cry wolf — is unmeasured. |
 | **Translation quality** | Unmeasured in every language. The validator checks structure, figures and terminology; nothing has checked whether a translation is *good*. |
