@@ -173,4 +173,57 @@ t.check('each language names itself', L.LANGUAGE_BY_CODE.zh.endonym, '中文');
 t.check('and an unread translation says so',
   L.STANDING_NOTE.unreviewed.includes('Nobody who reads this language has checked it'), true);
 
+console.log('\nOne set of questions, in several languages\n');
+
+// ---------------------------------------------------------------------------
+//   Approved lecture → MASTER QUIZ → translation → localised quiz
+//
+// and never: translated notes → a quiz written from them. The second way gives
+// the French cohort different questions from the English one, drifting a
+// little further with every language — and they sit the same examination.
+// ---------------------------------------------------------------------------
+t.section('A quiz is written once, from the master, and then carried across');
+{
+  const store = fresh();
+  const french = await S.makeStudyAid(store, e, student, 'course-biol101', {
+    kind: 'test', lectures: [6], questions: 10, language: 'fr',
+  });
+  t.check('the student gets it in their language', french.language, 'fr');
+  t.check('…as a translation of a master quiz', !!french.translatedFromId, true);
+  t.check('…and read by nobody yet', french.translationStanding, 'unreviewed');
+
+  const all = await store.studyAids('course-biol101', 'person-student');
+  const master = all.find((a) => a.id === french.translatedFromId);
+  t.check('the master quiz was kept', !!master, true);
+  t.check('…in the language the course is taught in', master.language, 'en');
+  t.check('…and it is the same ask', master.brief.questions, 10);
+
+  // THE POINT OF DOING IT THIS WAY: two students, two languages, one set of
+  // questions. The French body is a rendering of the English one, so it cannot
+  // ask about something the English quiz did not.
+  t.check('the French quiz is a rendering of the master, line for line',
+    french.body.split('\n').length, master.body.split('\n').length);
+}
+
+t.section('And the course’s own language needs no translation step');
+{
+  const store = fresh();
+  const english = await S.makeStudyAid(store, e, student, 'course-biol101', {
+    kind: 'test', lectures: [6], questions: 10, language: 'en',
+  });
+  t.check('it is the master itself', english.translatedFromId, undefined);
+  t.check('…and only one aid was stored',
+    (await store.studyAids('course-biol101', 'person-student')).length, 1);
+}
+
+t.section('The Course AI answers out of the master, never out of a rendering');
+{
+  const store = fresh();
+  const passages = await S.coursePassages(store, 'course-biol101');
+  // The demonstration course has French notes published on Lecture 06.
+  t.check('no translated passage is in the corpus',
+    passages.some((p) => p.text.includes('La photosynthèse')), false);
+  t.check('…and the master’s notes are', passages.some((p) => p.text.includes('Photosynthesis converts')), true);
+}
+
 t.done();

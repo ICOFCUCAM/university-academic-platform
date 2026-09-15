@@ -31,6 +31,28 @@
 // screen that decided for itself would be a fourth opinion.
 // ---------------------------------------------------------------------------
 
+/** ---- Who publishes a course ------------------------------------------- */
+
+/**
+ * A UNIVERSITY IS NOT THE ONLY KIND OF TEACHER.
+ *
+ *   GLOBAL PLATFORM
+ *        ├── universities   — faculties, departments, cohorts, a registry
+ *        └── independent educators — one person, their own courses
+ *
+ * Both publish courses; everything downstream is identical, because the
+ * pipeline, the approval layer and the Course AI never ask who employs the
+ * lecturer. What differs is the environment ABOVE the course: a university has
+ * faculties and departments and a registry that opens courses, and an
+ * independent educator is the whole institution.
+ */
+export interface Publisher {
+  id: string;
+  kind: 'university' | 'independent';
+  name: string;
+  shortName?: string;
+}
+
 /** ---- The environment. The university's, in every deployment. ---------- */
 
 export interface University {
@@ -57,7 +79,13 @@ export interface Department {
 /** The central object. */
 export interface Course {
   id: string;
-  departmentId: string;
+  /** Who publishes it. Absent means the deployment's own institution. */
+  publisherId?: string;
+  /**
+   * Optional: an independent educator has no faculty and no department, and a
+   * platform that required one would make them invent a fiction.
+   */
+  departmentId?: string;
   code: string;
   title: string;
   creditUnit?: number;
@@ -340,6 +368,22 @@ export interface StudyAid {
   brief?: { questions?: number; register?: Register; minutes?: number };
   approvedByName?: string;
   createdAt: string;
+
+  // ---- ONE SET OF QUESTIONS, IN SEVERAL LANGUAGES ------------------------
+  //
+  //   Approved lecture → MASTER QUIZ → translation → localised quiz
+  //
+  // and never: translated notes → a quiz written from them. The second way
+  // gives the French cohort different questions from the English one, drifting
+  // a little further with every language, and the two cohorts sit the same
+  // examination. So a quiz is written ONCE, from the master content, and then
+  // carried across — the same academic questions, in the student's language.
+  language?: string;
+  /** The master study aid this one was translated from. */
+  translatedFromId?: string;
+  translationStanding?: import('../i18n/languages').TranslationStanding;
+  /** What the language-agnostic validator found. Empty is the normal case. */
+  translationFindings?: import('../i18n/validate').TranslationFinding[];
 }
 
 /**

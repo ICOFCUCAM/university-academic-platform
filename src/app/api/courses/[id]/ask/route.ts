@@ -26,6 +26,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
         lectures: 'lectures' in made ? made.lectures : null,
         questions: made.kind === 'test' ? made.questions : undefined,
         minutes: made.kind === 'audio' ? made.minutes : undefined,
+        // Written from the master, then carried across — so a student in Lyon
+        // and one in Lagos answer the same academic questions.
+        language: body.language,
       });
       return NextResponse.json({
         answer: {
@@ -35,6 +38,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
           studyAidId: aid.id,
           title: aid.title,
           audience: aid.audience,
+          language: aid.language,
+          translatedFromId: aid.translatedFromId,
+          outsideCourse: false,
         },
       });
     }

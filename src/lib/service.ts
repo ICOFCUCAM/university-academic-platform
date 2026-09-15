@@ -16,7 +16,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
-  Artefact, ArtefactKind, ArtefactVersion, Lecture, Register, StudyAid,
+  Artefact, ArtefactKind, ArtefactVersion, Course, Lecture, Register, StudyAid,
 } from './domain/types';
 import { mayAct, type Actor } from './domain/ownership';
 import { can } from './capabilities';
@@ -388,6 +388,14 @@ export async function coursePassages(store: Store, courseId: string): Promise<Pa
     if (artefact.state !== 'published') continue;
     if (!readable.includes(artefact.kind)) continue;
     if (!artefact.body) continue;
+    // ---- ONE ACADEMIC SOURCE, IN THE LANGUAGE IT WAS TAUGHT -------------
+    //
+    // The course knowledge is the lecturer's approved master; the student's
+    // language is a presentation layer over it. Retrieving over translations
+    // as well would mean the Course AI answered sometimes from the lecture and
+    // sometimes from a rendering of it — and a claim that drifted in the
+    // French would come back as the course's own teaching.
+    if (artefact.translatedFromId) continue;
     const lecture = byId.get(artefact.lectureId);
     if (!lecture) continue;
 
@@ -487,12 +495,22 @@ export async function askCourseAI(
 
 export async function makeStudyAid(
   store: Store, e: Engine, actor: Actor, courseId: string,
-  brief: { kind: StudyAid['kind']; lectures: number[] | null; questions?: number; minutes?: number; register?: Register },
+  brief: {
+    kind: StudyAid['kind']; lectures: number[] | null;
+    questions?: number; minutes?: number; register?: Register;
+    /**
+     * The language the student wants it in. THE QUESTIONS ARE STILL WRITTEN
+     * FROM THE MASTER: this decides what is carried across afterwards, not
+     * what the quiz is made from.
+     */
+    language?: string;
+  },
 ): Promise<StudyAid> {
   const where = await scene(store, courseId, actor.id);
   const teaching = where.course.lecturerIds.includes(actor.id);
   if (actor.role === 'student' && !where.enrolment) throw new Refused('This course is not one of yours.');
 
+  const courseLanguage = where.course.originalLanguage ?? 'en';
   const lectures = await store.lectures(courseId);
   const chosen = brief.lectures
     ? lectures.filter((l) => brief.lectures!.includes(l.sequence))
@@ -529,7 +547,7 @@ different question.`,
     effort: 'high',
   }, { corpusSize: passages.length });
 
-  const aid: StudyAid = {
+  const masterAid: StudyAid = {
     id: randomUUID(),
     courseId,
     kind: brief.kind,
@@ -547,9 +565,76 @@ different question.`,
     state: teaching ? 'ready' : 'ready',
     body: result.text,
     brief: { questions: brief.questions, register: brief.register, minutes: brief.minutes },
+    language: courseLanguage,
     createdAt: now(),
   };
-  return store.saveStudyAid(aid);
+  await store.saveStudyAid(masterAid);
+
+  // ---- AND THEN, IF THE STUDENT READS ANOTHER LANGUAGE, CARRIED ACROSS ---
+  //
+  //   Approved lecture → master quiz → translation → localised quiz
+  //
+  // so a student in Lyon and a student in Lagos answer the same academic
+  // questions. Writing the French quiz from the French notes would give them
+  // different questions, and they sit the same examination.
+  if (!brief.language || brief.language === courseLanguage) return masterAid;
+  return translateStudyAid(store, e, where.course, masterAid, brief.language);
+}
+
+/**
+ * A study aid carried into another language, under the same protection and the
+ * same validation as any other translation. A rejected one is returned as a
+ * failed aid rather than published: a quiz that lost a figure is a quiz with an
+ * unanswerable question in it.
+ */
+async function translateStudyAid(
+  store: Store, e: Engine, course: Course, master: StudyAid, language: string,
+): Promise<StudyAid> {
+  const sourceLanguage = course.originalLanguage ?? 'en';
+  const guarded = protectTerms(master.body ?? '', { glossary: course.terminology });
+  // A quiz is revision material: it is carried across under the rules written
+  // for revision material rather than for prose.
+  const prompt = translationPrompt('revision_materials', language, sourceLanguage, guarded.text);
+
+  const localised: StudyAid = {
+    ...master,
+    id: randomUUID(),
+    language,
+    translatedFromId: master.id,
+    translationStanding: 'unreviewed',
+    state: 'running',
+    createdAt: now(),
+  };
+
+  try {
+    const result = await callAs(e, 'transformation', {
+      system: prompt.system, user: prompt.user, maxTokens: 16000, effort: 'high',
+    });
+    const shape = validateTranslation(guarded.text, result.text);
+    const restored = restoreTerms(result.text, guarded.markers);
+    const terms = validateTerminology(master.body ?? '', restored.text, {
+      glossary: course.terminology,
+      missingProtected: restored.missing,
+    });
+    localised.translationFindings = shape.findings;
+
+    if (!shape.ok || !terms.ok) {
+      localised.state = 'failed';
+      localised.body = undefined;
+      localised.title = `${localised.title} — ${languageName(language)} (rejected)`;
+      await store.saveStudyAid({ ...localised, body: shape.rejection ?? terms.rejection });
+      return { ...localised, body: shape.rejection ?? terms.rejection };
+    }
+
+    localised.body = restored.text;
+    localised.state = 'ready';
+    localised.title = `${master.title} — ${languageName(language)}`;
+  } catch (error) {
+    localised.state = 'failed';
+    localised.body = error instanceof Error ? error.message : String(error);
+  }
+
+  return store.saveStudyAid(localised);
 }
 
 /** ---- Lectures --------------------------------------------------------- */

@@ -170,6 +170,18 @@ every translated page.
   the same lecture is 15:00 in English, 15:12 in French, 15:20 in Arabic.
   Trimming the Arabic would mean cutting a sentence the lecturer said.
 
+### Quizzes are written once
+
+```
+Approved lecture → MASTER QUIZ → translation → localised quiz
+```
+
+Never *translated notes → a quiz written from them*: that gives the French
+cohort different questions from the English one, and they sit the same
+examination. **Course content is one academic source; the student's language is
+a presentation layer over it** — so the Course AI retrieves from the master and
+answers in whichever language the student reads.
+
 ## The Course AI
 
 Restricted to **one course's published lectures**. Ask it:

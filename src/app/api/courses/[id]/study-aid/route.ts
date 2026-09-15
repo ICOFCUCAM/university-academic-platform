@@ -13,6 +13,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       lectures: body.lectures ?? null,
       questions: body.questions,
       minutes: body.minutes,
+      language: body.language,
     });
     return NextResponse.json({ aid });
   } catch (error) {

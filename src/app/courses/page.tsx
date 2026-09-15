@@ -30,9 +30,13 @@ export default async function Courses() {
               return (
                 <Link key={course.id} href={`/courses/${course.id}`}>
                   <Card className="px-5 py-4 transition hover:border-brand/40">
-                    <p className="text-[11px] uppercase tracking-wide text-ink-faint">
-                      {faculty?.name} · {department?.name}
-                    </p>
+                    {/* An independent educator has no faculty and no
+                        department, and the line simply does not appear. */}
+                    {(faculty || department) && (
+                      <p className="text-[11px] uppercase tracking-wide text-ink-faint">
+                        {[faculty?.name, department?.name].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                     <p className="mt-0.5 font-medium">
                       <span className="text-brand">{course.code}</span> — {course.title}
                     </p>

@@ -91,6 +91,47 @@ every time it is shown.
 fifteen-minute lesson is about fifteen minutes in each — 15:00, 15:12, 15:20 —
 and the estimate is shown rather than a promise of exactness.
 
+## 0c. Quizzes, and why they are not written in French
+
+```
+Approved lecture  →  MASTER QUIZ  →  translation  →  localised quiz
+```
+
+and never *translated notes → a quiz written from them*. The second way gives
+the French cohort different questions from the English one, drifting a little
+further with every language — and the two cohorts sit the same examination.
+
+So `makeStudyAid` writes the quiz once, from the master corpus, stores it, and
+then carries it across under the same protection and the same validation as any
+other translation. A localised quiz that lost a figure is **rejected**: a
+question whose number vanished is a question nobody can answer.
+
+The same rule makes the Course AI coherent:
+
+> **Course content = one academic source. Student language = presentation
+> layer.**
+
+`coursePassages` returns master artefacts only. Retrieving over translations as
+well would mean the tutor answered sometimes from the lecture and sometimes
+from a rendering of it, and a claim that drifted in the French would come back
+as the course's own teaching.
+
+## 0d. Who publishes a course
+
+```
+GLOBAL PLATFORM
+   ├── universities          faculties → departments → courses → cohorts
+   └── independent educators one person, their own courses
+              ↓
+          the same pipeline, approval layer, languages and Course AI
+```
+
+Everything below the course is identical, because no stage asks who employs the
+lecturer. What differs is the environment above it: a university has a registry
+that opens courses and enrols students; an independent educator is the whole
+institution. `Course.departmentId` is therefore optional — requiring one would
+make an independent educator invent a faculty.
+
 ## 1. The four products inside this one
 
 | | What it is | Where it lives |
