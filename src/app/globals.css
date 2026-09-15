@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+body {
+  @apply bg-page text-ink antialiased;
+}
+
+/* Generated academic prose is read for minutes at a time; it gets the
+   measure and the leading of something meant to be read, not of a UI. */
+.prose-academic {
+  @apply text-[15px] leading-7 text-ink;
+}
+.prose-academic h1 { @apply text-2xl font-semibold mt-8 mb-3; }
+.prose-academic h2 { @apply text-lg font-semibold mt-7 mb-2 text-ink; }
+.prose-academic h3 { @apply text-base font-semibold mt-5 mb-1; }
+.prose-academic p { @apply my-3; }
+.prose-academic ul { @apply my-3 list-disc pl-5 space-y-1; }
+.prose-academic ol { @apply my-3 list-decimal pl-5 space-y-1; }
+.prose-academic blockquote { @apply border-l-2 border-page-line pl-4 italic text-ink-soft my-4; }
+.prose-academic code { @apply bg-page px-1 py-0.5 rounded text-[13px]; }

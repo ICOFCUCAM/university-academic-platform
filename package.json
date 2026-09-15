@@ -1,0 +1,43 @@
+{
+  "name": "academic-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lecturers teach. AI transforms. Students learn. Every lecture becomes a corrected text, structured notes, a taught audio lesson, revision material and part of a course knowledge base a Course AI answers from.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "npm run test:capabilities && npm run test:ownership && npm run test:pipeline && npm run test:knowledge && npm run test:prompts && npm run test:tutor && npm run test:jobs && npm run test:service",
+    "test:capabilities": "node src/lib/capabilities.test.mjs",
+    "test:ownership": "node src/lib/domain/ownership.test.mjs",
+    "test:pipeline": "node src/lib/pipeline/stages.test.mjs",
+    "test:knowledge": "node src/lib/knowledge/build.test.mjs",
+    "test:tutor": "node src/lib/ai/tutor.test.mjs",
+    "test:jobs": "node src/lib/jobs/plan.test.mjs",
+    "test:service": "node src/lib/service.test.mjs",
+    "test:prompts": "node src/lib/ai/prompts.test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "lucide-react": "^0.462.0",
+    "marked": "^18.0.13",
+    "next": "^14.2.15",
+    "playwright": "^1.63.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "esbuild": "^0.25.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5"
+  }
+}
