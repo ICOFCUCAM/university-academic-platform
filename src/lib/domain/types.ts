@@ -491,6 +491,13 @@ export interface StudyAid {
   // examination. So a quiz is written ONCE, from the master content, and then
   // carried across — the same academic questions, in the student's language.
   language?: string;
+  /**
+   * THE APPROVED TEXTS THIS WAS WRITTEN OUT OF, each with the version it was
+   * at when the passage was cut. `lectureIds` answers "which lectures does
+   * this cover"; this answers "where did this question come from", which is
+   * the question a university asks when a student disputes one.
+   */
+  builtFrom?: { artefactId: string; kind: import('./types').ArtefactKind; version: number }[];
   /** The master study aid this one was translated from. */
   translatedFromId?: string;
   translationStanding?: import('../i18n/languages').TranslationStanding;

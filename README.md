@@ -245,5 +245,17 @@ ACADEMIC_DATA_DIR=./.data    # persist the demonstration across restarts
 NEXT_PUBLIC_BASE_PATH=/academic   # when mounted inside another site
 ```
 
-See `docs/ARCHITECTURE.md` for the four products inside this one, and
-`docs/INTEGRATION.md` for mounting it inside an existing university system.
+One sentence governs the repository:
+
+> **The lecturer-approved master is the source of truth for what was taught. AI
+> may transform its language, structure, translation and delivery, but it may
+> not alter its substance.**
+
+- `docs/ARCHITECTURE.md` — the four products inside this one, the constitution
+  that governs every AI operation, and where a sentence came from.
+- `docs/DELIVERY.md` — how a lecture reaches a student, from a recorded
+  multilingual lecture to live translated audio and lip-synchronised video.
+  The last two are **not built**, and that page says so on every diagram.
+- `docs/GAPS.md` — the full audit: what is built, what is stubbed, what is a
+  deliberate deviation, and what would have to be true to run a pilot.
+- `docs/INTEGRATION.md` — mounting it inside an existing university system.

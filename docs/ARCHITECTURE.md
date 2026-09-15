@@ -6,6 +6,17 @@ That sentence is the architecture, not the tagline. Each clause is enforced in
 a different file, and the tests are written against the clauses rather than
 against the code.
 
+And one sentence governs the whole repository, including the delivery layers
+that do not exist yet:
+
+> **The lecturer-approved master is the source of truth for what was taught. AI
+> may transform its language, structure, translation and delivery, but it may
+> not alter its substance.**
+
+It reaches transcription, notes, translation, audio, quizzes, the Course AI and
+— when they are built — live translation and lip synchronisation. A new way of
+delivering a lecture is never a new way of deciding what it said.
+
 ---
 
 ## 0. The AI Transformation Constitution
@@ -392,17 +403,54 @@ times, then stops with its reason kept, and takes its dependents with it. On a
 taught course the plan stops at the approval gate; in a personal library it
 runs end to end.
 
-## 9. What is not built
+## 9. Where a sentence came from
+
+When a university asks *where did this sentence in the French notes come
+from*, the platform answers with the chain rather than with a shrug:
+
+```
+Lecture 08 → Approved master v3 → French translation v2 → Notes v2
+```
+
+Every link is a field, not an inference. `derivedFromId` says which stage a
+thing was made from; `translatedFromId` says which **approved** original a
+translation carries into another language; `version` and the `ArtefactVersion`
+rows keep every earlier body in full, because a diff cannot be published and a
+version you cannot open is not a version. `service.provenance()` walks them,
+and `origin`, `producedBy` and `correctedByLecturer` say, at each step,
+whether it was the lecturer or the model that wrote it.
+
+The chain is also what the master rule is enforced *with*: a regeneration over
+an approval clears the approval, marks everything downstream stale, and records
+both in the version history and in the audit log — so a derived artefact can
+never quietly outlive the master it came from.
+
+## 10. Delivery, and how far it goes
+
+`DELIVERY.md` is the map: recorded multilingual lectures, then multilingual
+playback, then the lecturer's authorised voice, then **live translated audio**,
+then **live translated video with lip synchronisation**. The first three are
+built; the last two are not, and that page exists so an architecture diagram is
+not read as a feature list.
+
+The part worth stating here: a live translated stream is a *delivery* of a
+lecture, never a version of it. The master is still what the lecturer approves
+afterwards, the term-protection layer runs in the live path exactly as it does
+in the recorded one, and validation still **rejects** rather than reporting,
+because live there is nobody reading the output before a student hears it.
+
+## 11. What is not built
 
 Named plainly, because a roadmap read as a feature list is how software gets
-bought twice:
+bought twice. `GAPS.md` is the full audit; the headline absences:
 
-- **No transcription or speech vendor is wired in.** The interfaces exist and
-  are called; the adapters are one file each.
-- **No file storage.** The upload form records a file name; the working path is
-  a pasted transcript.
-- **No authentication.** `src/lib/session.ts` is a demonstration switcher, and
-  says so. Mounted in a university, the host's session is the source of truth.
-- **No assignments, no engagement analytics beyond counts, no payment
-  processing.** The plans in `src/lib/billing/plans.ts` are the shape of
-  metering, not a billing integration.
+- **No vendor has ever been run.** Transcription, speech, the object store and
+  the Postgres adapter are all written against real APIs and tested against
+  fakes; not one has held a live key or a real bucket.
+- **No model has been chosen.** The preservation benchmark is written, and
+  `bench/` contains no results.
+- **No live delivery.** No transport, no streaming transcription, no live
+  translation, no lip synchronisation — see `DELIVERY.md`.
+- **No payments and no credits.** The plans in `src/lib/billing/plans.ts` are
+  the shape of metering, and `access: 'paid'` behaves exactly like enrolment
+  only, which is the safe direction.

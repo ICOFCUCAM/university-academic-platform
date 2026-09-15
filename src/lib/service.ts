@@ -550,6 +550,8 @@ export async function coursePassages(store: Store, courseId: string): Promise<Pa
       const text = chunk.trim();
       if (text.length < 40) continue;
       passages.push({
+        artefactId: artefact.id,
+        artefactVersion: artefact.version,
         lectureId: lecture.id,
         lectureSequence: lecture.sequence,
         lectureTitle: lecture.title,
@@ -839,6 +841,16 @@ different question.`,
     body: result.text,
     brief: { questions: brief.questions, register: brief.register, minutes: brief.minutes },
     language: courseLanguage,
+    // WHICH APPROVED TEXTS, AT WHICH VERSION. Recorded now rather than worked
+    // out later: a lecturer may correct the notes next week, and the question
+    // this quiz asked came from the text as it stood today.
+    builtFrom: [...new Map(passages
+      .filter((passage) => passage.artefactId)
+      .map((passage) => [passage.artefactId!, {
+        artefactId: passage.artefactId!,
+        kind: passage.artefactKind,
+        version: passage.artefactVersion ?? 1,
+      }])).values()],
     createdAt: now(),
   };
   await store.saveStudyAid(masterAid);
@@ -2181,6 +2193,87 @@ export async function issueCertificate(
     detail: certificate.code,
   });
   return certificate;
+}
+
+/** ---- Where a sentence came from ---------------------------------------
+ *
+ * "Where did this sentence in the French notes come from?" is the question a
+ * university asks when a student disputes a line, and the answer has to be a
+ * chain rather than a shrug:
+ *
+ *   Lecture 08 → Approved master v3 → French translation v2 → Notes v2
+ *
+ * Every link here is a field that was written when the thing was made, not an
+ * inference drawn afterwards. `translatedFromId` is followed before
+ * `derivedFromId`, because a translation's real parent is the approved
+ * original it carries — its `derivedFromId` only says which stage of the
+ * pipeline it belongs to, which the chain already shows.
+ *
+ * NO BODIES COME BACK, and that is what lets a student read it. The chain is
+ * kinds, languages, versions and the names of the people who stood behind
+ * each step: enough to answer where a sentence came from, and not a way to
+ * read a draft nobody published.
+ */
+
+export interface ProvenanceStep {
+  artefactId: string;
+  kind: ArtefactKind;
+  language: string;
+  version: number;
+  state: Artefact['state'];
+  /** Whether the words at this step were the model's or a person's. */
+  origin: Artefact['origin'];
+  producedBy?: string;
+  correctedByLecturer: boolean;
+  approvedByName?: string;
+  approvedAt?: string;
+  /** For a translation: who vouched for it, if anybody has. */
+  reviewedByName?: string;
+  translationOf?: string;
+  /** How many earlier versions of this step are kept and openable. */
+  versionsKept: number;
+  staleSince?: string;
+}
+
+export async function provenance(
+  store: Store, actor: Actor, artefactId: string,
+): Promise<{ lecture: Lecture | null; chain: ProvenanceStep[] }> {
+  const artefact = await store.artefact(artefactId);
+  if (!artefact) throw new Refused('No such artefact.');
+
+  const where = await sceneOf(store, artefact, actor.id);
+  const permitted = mayAct(actor, 'read', artefact, where);
+  if (!permitted.allowed) throw new Refused(permitted.reason!);
+
+  const chain: ProvenanceStep[] = [];
+  const seen = new Set<string>();
+  let current: Artefact | null = artefact;
+
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    const versions = await store.versions(current.id);
+    chain.unshift({
+      artefactId: current.id,
+      kind: current.kind,
+      language: current.language ?? where.course.originalLanguage ?? 'en',
+      version: current.version,
+      state: current.state,
+      origin: current.origin,
+      producedBy: current.producedBy,
+      correctedByLecturer: current.correctedByLecturer,
+      approvedByName: current.approvedByName,
+      approvedAt: current.approvedAt,
+      reviewedByName: current.reviewedByName,
+      translationOf: current.translatedFromId,
+      versionsKept: versions.length,
+      staleSince: current.staleSince,
+    });
+
+    const parentId: string | null = current.translatedFromId ?? current.derivedFromId;
+    current = parentId ? await store.artefact(parentId) : null;
+  }
+
+  return { lecture: await store.lecture(artefact.lectureId), chain };
 }
 
 /** ---- The catalogue ------------------------------------------------------

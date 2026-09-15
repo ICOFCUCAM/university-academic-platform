@@ -35,6 +35,15 @@ export interface Passage {
   lectureSequence: number;
   lectureTitle: string;
   artefactKind: ArtefactKind;
+  /**
+   * WHICH ARTEFACT, AND WHICH VERSION OF IT. A citation that names a lecture
+   * answers "where is this taught"; a university asking "where did this
+   * sentence come from" needs the approved text and the version number, and
+   * that answer has to be recorded when the passage is cut, not reconstructed
+   * afterwards from a body that may since have been corrected.
+   */
+  artefactId?: string;
+  artefactVersion?: number;
   text: string;
   /**
    * Which course it came from. Only set when the search has widened beyond the

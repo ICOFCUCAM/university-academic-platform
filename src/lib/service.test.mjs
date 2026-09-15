@@ -212,6 +212,49 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('Where a sentence came from');
+{
+  const store = fresh();
+
+  // The French notes in the demonstration are a translation of the approved
+  // English master, which was itself derived from the corrected text, which
+  // came from the transcript, which came from the recording.
+  const { chain, lecture } = await S.provenance(store, lecturer, 'lecture-06-structured_notes-fr');
+
+  t.check('the chain starts at the recording', chain[0].kind, 'recording');
+  t.check('…and ends at the thing asked about',
+    chain[chain.length - 1].language, 'fr');
+  t.check('…and names the lecture it belongs to', lecture.sequence, 6);
+  t.check('the whole chain, in order', chain.map((step) => step.kind),
+    ['recording', 'transcript', 'corrected_text', 'structured_notes', 'structured_notes']);
+  t.check('the last step says which master it carries',
+    chain[chain.length - 1].translationOf, 'lecture-06-structured_notes');
+
+  // NO BODIES. That is what lets a student read their own provenance without
+  // it becoming a way to open a draft nobody published.
+  t.check('no text of any step comes back',
+    JSON.stringify(chain).includes('photosynth'), false);
+
+  // A CORRECTION SHOWS UP IN THE CHAIN, with the count of versions kept.
+  await S.editArtefact(store, lecturer, 'lecture-06-structured_notes',
+    '## In one paragraph\nCorrected by the lecturer.', 'Fixed a figure');
+  const after = await S.provenance(store, lecturer, 'lecture-06-structured_notes');
+  const head = after.chain[after.chain.length - 1];
+  t.check('the corrected step is at version 2', head.version, 2);
+  t.check('…and says a person wrote it', head.origin, 'lecturer');
+  t.check('…and keeps the earlier version openable', head.versionsKept >= 1, true);
+
+  // AND THE TRANSLATION KNOWS IT IS BEHIND. The master moved; the French
+  // rendering of it is stale, and the chain says so rather than implying the
+  // two still agree.
+  const french = await S.provenance(store, lecturer, 'lecture-06-structured_notes-fr');
+  t.check('the translation is marked stale after the master changed',
+    !!french.chain[french.chain.length - 1].staleSince, true);
+
+  await t.refuses('a stranger cannot read a chain into material that is not theirs',
+    () => S.provenance(store, { id: 'person-nobody', role: 'student' }, 'lecture-06-structured_notes'));
+}
+
 t.section('The catalogue, which asks nothing about whoever is reading');
 {
   const store = fresh();

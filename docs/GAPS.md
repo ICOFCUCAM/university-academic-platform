@@ -65,7 +65,7 @@ Three kinds of entry:
 
 | | State |
 |---|---|
-| **Transcript in the working language** | **Deviation.** The specification lists the transcript among the things that arrive in the student's language. It is not translated: it is working material, nobody revises from it, and translating every transcript in a university multiplies cost for a document with no reader. Revisit if students actually ask for it. |
+| **Transcript in the working language** | **Deviation, and the University has since ratified it.** The student's language package is notes, audio, quiz, revision and the Course AI; the transcript stays as the source artefact, in the language it was spoken, available under the same permissions as anything else. Translating every transcript in a university multiplies cost for a document with no reader. Revisit only if students actually ask for it. |
 | **Interface localisation** | **Built for the student's path**, in all nine languages: navigation, the learning strip, the Course AI's labels, the revision room, the flashcard deck, the learning profile — including every accessibility control, because a student who needs the dyslexia-friendly typeface needs the control offering it to be in their language more than most — the open catalogue, and the refusals a student can actually reach. The line is deliberate: **the student's screens are in the student's language; the lecturer's workbench is in the course's language**, since a lecturer reviewing an English lecture is working in English. Still English: the lecturer's review panel, coursework, Settings and the audit log. `coverage()` reports how far each language got, and `reviewed: false` is recorded for all eight because no native speaker has checked one string of them. |
 | **Right-to-left layout** | **Built, and measured rather than reasoned about** — `npm run check:rtl` drives a browser and asserts it. The document itself carries `dir`, not a div inside it, so the scrollbar and the native controls mirror too; the chrome uses logical properties throughout, so the navigation's rule sits on the edge facing the content instead of the screen edge; each course card says which language it is in and is laid out in that one, not the reader's; and untranslated English sentences resolve their own direction per paragraph rather than arriving with the full stop on the left. What is still not done: the strings themselves, on the deeper screens, are English — that is the localisation row above, not this one. |
 | **A per-language audio duration** | Stubbed — estimated from a words-per-minute table, not measured, because no audio exists. |
@@ -103,7 +103,61 @@ Three kinds of entry:
 | **Row-level security** | **Written** in the same file, mirroring `domain/ownership.ts` policy for policy — a student sees a published artefact and nothing else, the owner alone may write, and `ls_cohort_shape` has no `person_id` so a lecturer cannot learn who. Unverified like the rest. |
 | **A portal entry** | Not added to their `portalNav.tsx`; the snippet is in the integration document. |
 
-## 9. Smaller debts, named so they are not discovered
+## 9. Content lineage and AI integrity
+
+The section the University asked for, because this is what a university's
+lawyers ask about rather than what its lecturers ask about. **The states below
+are read from the code as it stands, not from the copy of this audit that was
+circulated** — several of those rows describe the repository as it was before
+this term's work and would understate it.
+
+The question the whole section exists to answer:
+
+> *Where did this sentence in the French notes come from?*
+
+```
+Lecture 08 → Approved master v3 → French translation v2 → Notes v2
+```
+
+| Requirement | State |
+|---|---|
+| **Raw recording preserved** | **Built.** Stored as its own artefact with the bytes behind it — disk or an S3-compatible bucket — and never overwritten by anything downstream. |
+| **Raw transcript preserved** | **Built.** The transcript is its own stage: the cleaned text is a *new* artefact derived from it, so "what was actually said" survives the cleanup that follows it. |
+| **Lecturer-approved master** | **Built.** `approve` records who and when; nothing publishes without it, and no later stage runs on an unapproved source. |
+| **Immutable approved version** | **Built, in the only sense that is honest.** The substance is not frozen — a lecturer may correct their own material, and must be able to — but it cannot change *quietly*: a correction mints a new version, the old body is kept openable, everything downstream is marked stale, and a regeneration over an approval clears the approval and says so in the version history and the audit log. |
+| **Derived content linked to master** | **Built.** `derivedFromId` is required on everything except the recording. |
+| **Translation linked to master** | **Built.** `translatedFromId` names the *approved* original, never a draft, and a translation of a translation is refused. |
+| **Audio script linked to source** | **Built.** Script derives from the notes, audio from the script, each part from its own slice. |
+| **Quiz linked to source** | **Built.** A study aid records `builtFrom` — the artefacts it was written out of **and the version each was at** — because the lecturer may correct the notes next week and the question was asked from the text as it stood that day. |
+| **Terminology protection** | **Built and mechanical.** Markers in before the model sees the text, counted on the way out; a substitution is rejected rather than reported. |
+| **Transformation validation** | **Built, never exercised against a live model.** Its own accuracy — does it catch a real alteration, does it cry wolf — is unmeasured, and that is the benchmark's job. |
+| **AI prohibited from factual correction** | **Structural, then unproven.** Four refusals live in the role gate rather than the prompt, and the forbidden operations are enumerated in code. But whether a given model *obeys* under load is exactly what has not been measured: no model has been chosen and `bench/` holds no results. |
+| **Output traceability** | **Built.** `service.provenance()` walks the chain and the artefact screen shows it, with the language, version, who approved it, who read the translation and how many earlier versions are kept. No bodies come back, so a student may read their own provenance without it becoming a way to open a draft. |
+| **Version history** | **Built.** Every earlier body kept in full — a diff cannot be published, and a version you cannot open is not a version. |
+| **Who did what** | **Built.** Approving, publishing, withdrawing, regenerating, issuing a certificate and moving a working language are recorded with a name. Reading is deliberately not recorded and cannot be — see the audit-log entry in §11. |
+
+## 10. Live delivery — not built, and mapped
+
+`docs/DELIVERY.md` is the map. V1 recorded multilingual lectures, V2
+multilingual playback, V3 the lecturer's authorised voice: built, except that
+no cloning vendor is wired. **V4 live translated audio and V5 live translated
+video with lip synchronisation: not built at all** — no transport, no streaming
+transcription, no live translation, no lip-sync, and no vendor evaluated for
+any of it. Candidates have been named in conversation; none has been run here,
+and this environment has never held a key for one.
+
+Two things that page settles rather than leaves open, because they are
+decisions and not engineering:
+
+- **A live stream is a delivery of a lecture, never a version of it.** The
+  master is still what the lecturer approves afterwards, and the recorded
+  pipeline still runs.
+- **Term protection runs in the live path, and validation still rejects.** What
+  a student hears when a segment is rejected — the original audio, silence, or
+  a spoken notice — has to be decided before V4 ships rather than discovered
+  after it.
+
+## 11. Smaller debts, named so they are not discovered
 
 - **The demonstration data is invented** — a university, a lecturer, a student, a French translation I wrote by hand. Nothing in `seed.ts` is a real institution or person, and the French notes are not machine output.
 - **Accessibility is built**, in the learning profile: text size, a dyslexia-friendly typeface, high contrast, motion, always-underlined links, and the spoken script shown beside the audio rather than behind a click. The settings are the person's own — no parameter exists for setting somebody else's, and no screen reports them, because a typeface is a disclosure made to a stylesheet. They are applied on the server so the first paint is already right, and the palette moved to CSS variables so high contrast is a swap rather than a second stylesheet. Measured with `getComputedStyle` rather than reasoned about: 15px → 19px, `rgb(18,22,31)` → `rgb(0,0,0)`, links underlined, motion stopped. **What is still not done:** the captions are the whole script, not a timed track — the speech services return audio and a length, not word timings, and the screen says so rather than claiming synchronisation. No screen-reader audit has been done, and no native speaker has checked any of it in the other eight languages.

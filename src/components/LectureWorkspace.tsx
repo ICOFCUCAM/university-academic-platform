@@ -7,6 +7,7 @@ import type { Artefact, ArtefactKind, Lecture } from '@/lib/domain/types';
 import { MODES, PERSONAS, type AudioMode, type Persona } from '@/lib/ai/audioModes';
 import { REVISION_LABEL, type RevisionKind } from '@/lib/ai/prompts';
 import { Markdown } from '@/components/Markdown';
+import { Provenance } from '@/components/Provenance';
 import { WordCheck } from '@/components/WordCheck';
 import { StateBadge } from '@/components/ui';
 import { CopyButton, LanguageBar, LockedLanguage, StandingNote, type LanguageRow } from '@/components/LanguageBar';
@@ -510,6 +511,8 @@ export function LectureWorkspace({
                 from the lecturer's own recording, language and structure
                 processed, substance preserved — and an artefact the offline
                 processor made says that instead. */}
+            <Provenance artefactId={shown.id} />
+
             {shown.origin !== 'lecturer' && !translated && (
               <div className="rounded-md border border-page-line bg-page px-4 py-2.5 text-xs text-ink-soft">
                 <span className="font-semibold uppercase tracking-wide text-ink-faint">Lecture content</span>
