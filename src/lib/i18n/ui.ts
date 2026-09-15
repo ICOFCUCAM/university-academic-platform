@@ -24,7 +24,7 @@
 
 export type UIKey =
   | 'nav.dashboard' | 'nav.lectures' | 'nav.courses' | 'nav.notifications'
-  | 'nav.profile' | 'nav.settings' | 'nav.viewingAs'
+  | 'nav.profile' | 'nav.settings' | 'nav.viewingAs' | 'nav.record'
   | 'course.lectures' | 'course.revision' | 'course.search' | 'course.readingAndWork'
   | 'course.courseAI' | 'course.newLecture' | 'course.taughtBy' | 'course.knowledgeBase'
   | 'lecture.pipeline' | 'lecture.read' | 'lecture.listen' | 'lecture.revise'
@@ -46,6 +46,7 @@ const en: Record<UIKey, string> = {
   'nav.profile': 'My profile',
   'nav.settings': 'Settings',
   'nav.viewingAs': 'Viewing as',
+  'nav.record': 'Who did what',
   'course.lectures': 'Lectures',
   'course.revision': 'Revision',
   'course.search': 'Search',
@@ -88,6 +89,7 @@ const en: Record<UIKey, string> = {
 };
 
 const fr: Catalogue = {
+  'nav.record': 'Qui a fait quoi',
   'nav.dashboard': 'Tableau de bord', 'nav.lectures': 'Cours magistraux', 'nav.courses': 'Cours',
   'nav.notifications': 'Ce qui s’est passé', 'nav.profile': 'Mon profil', 'nav.settings': 'Paramètres',
   'nav.viewingAs': 'Vu en tant que',
@@ -114,6 +116,7 @@ const fr: Catalogue = {
 };
 
 const es: Catalogue = {
+  'nav.record': 'Quién hizo qué',
   'nav.dashboard': 'Panel', 'nav.lectures': 'Clases', 'nav.courses': 'Cursos',
   'nav.notifications': 'Novedades', 'nav.profile': 'Mi perfil', 'nav.settings': 'Ajustes',
   'nav.viewingAs': 'Viendo como',
@@ -140,6 +143,7 @@ const es: Catalogue = {
 };
 
 const pt: Catalogue = {
+  'nav.record': 'Quem fez o quê',
   'nav.dashboard': 'Painel', 'nav.lectures': 'Aulas', 'nav.courses': 'Disciplinas',
   'nav.notifications': 'Novidades', 'nav.profile': 'O meu perfil', 'nav.settings': 'Definições',
   'nav.viewingAs': 'A ver como',
@@ -166,6 +170,7 @@ const pt: Catalogue = {
 };
 
 const ar: Catalogue = {
+  'nav.record': 'من فعل ماذا',
   'nav.dashboard': 'لوحة المتابعة', 'nav.lectures': 'المحاضرات', 'nav.courses': 'المقررات',
   'nav.notifications': 'المستجدات', 'nav.profile': 'ملفي', 'nav.settings': 'الإعدادات',
   'nav.viewingAs': 'العرض بصفة',
@@ -192,6 +197,7 @@ const ar: Catalogue = {
 };
 
 const zh: Catalogue = {
+  'nav.record': '谁做了什么',
   'nav.dashboard': '概览', 'nav.lectures': '讲课', 'nav.courses': '课程',
   'nav.notifications': '动态', 'nav.profile': '我的资料', 'nav.settings': '设置',
   'nav.viewingAs': '当前身份',
@@ -218,6 +224,7 @@ const zh: Catalogue = {
 };
 
 const sw: Catalogue = {
+  'nav.record': 'Nani alifanya nini',
   'nav.dashboard': 'Dashibodi', 'nav.lectures': 'Mihadhara', 'nav.courses': 'Kozi',
   'nav.notifications': 'Yaliyotokea', 'nav.profile': 'Wasifu wangu', 'nav.settings': 'Mipangilio',
   'nav.viewingAs': 'Unatazama kama',
@@ -244,6 +251,7 @@ const sw: Catalogue = {
 };
 
 const de: Catalogue = {
+  'nav.record': 'Wer hat was getan',
   'nav.dashboard': 'Übersicht', 'nav.lectures': 'Vorlesungen', 'nav.courses': 'Kurse',
   'nav.notifications': 'Neuigkeiten', 'nav.profile': 'Mein Profil', 'nav.settings': 'Einstellungen',
   'nav.viewingAs': 'Angezeigt als',
@@ -270,6 +278,7 @@ const de: Catalogue = {
 };
 
 const no: Catalogue = {
+  'nav.record': 'Hvem gjorde hva',
   'nav.dashboard': 'Oversikt', 'nav.lectures': 'Forelesninger', 'nav.courses': 'Emner',
   'nav.notifications': 'Hva har skjedd', 'nav.profile': 'Min profil', 'nav.settings': 'Innstillinger',
   'nav.viewingAs': 'Vises som',

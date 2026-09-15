@@ -26,6 +26,7 @@ import type {
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { Voice } from '../voice/voices';
+import type { AuditEntry } from '../audit/audit';
 import type { Recall } from '../study/repetition';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
@@ -293,6 +294,16 @@ export function createSupabaseStore(options: SupabaseStoreOptions): Store {
         : q.eq('study_aid_id', studyAidId))) as unknown as QuizAttempt[];
     },
     async saveAttempt(attempt) { await upsert('ls_quiz_attempts', attempt as unknown as Row); return attempt; },
+
+    async auditEntries(courseId) {
+      // `seq` is the table's own bigserial: it breaks a tie between two acts
+      // in the same millisecond by which was written first. See memory.ts.
+      const found = (await rows('ls_audit', (q) => courseId
+        ? q.eq('course_id', courseId) : q)) as unknown as (AuditEntry & { seq?: number })[];
+      return found.sort((a, b) =>
+        b.at.localeCompare(a.at) || (b.seq ?? 0) - (a.seq ?? 0));
+    },
+    async appendAudit(entry) { await upsert('ls_audit', entry as unknown as Row); },
 
     async recalls(personId, studyAidId) {
       return (await rows('ls_recalls', (q) => studyAidId

@@ -212,6 +212,48 @@ t.section('Studying, and what a lecturer may learn from it');
       .find((p) => p.lectureId === 'lecture-06').quizTaken, true);
 }
 
+t.section('Who did what, and what is never written down');
+{
+  const store = fresh();
+
+  const corrected = await S.runStage(store, e, lecturer, 'lecture-04', 'corrected_text');
+  await S.approve(store, lecturer, corrected.id);
+  await S.publish(store, lecturer, corrected.id);
+  await S.withdraw(store, lecturer, corrected.id);
+
+  const log = await S.auditLog(store, lecturer, 'course-biol101');
+  const acts = log.map((entry) => entry.act);
+  t.check('approving, publishing and withdrawing are all recorded',
+    acts.includes('artefact.approved') && acts.includes('artefact.published')
+      && acts.includes('artefact.withdrawn'), true);
+  t.check('…newest first', acts[0], 'artefact.withdrawn');
+  t.check('…with a name against it, not an id', log[0].actorName, 'Dr Amara Okonjo');
+
+  // READING IS NOT IN IT. A student reads the notes; nothing lands.
+  const before = (await S.auditLog(store, registry)).length;
+  await S.recordStudy(store, student, {
+    courseId: 'course-biol101', lectureId: 'lecture-06',
+    artefactKind: 'structured_notes', event: 'read',
+  });
+  t.check('a student reading the notes writes nothing to the record',
+    (await S.auditLog(store, registry)).length, before);
+
+  // AND THE REGISTRY'S OWN ACTS ARE IN IT.
+  await S.setWorkingLanguage(store, registry, 'person-student', 'es', 'Transferred to Madrid');
+  const registryLog = await S.auditLog(store, registry);
+  t.check('a working language change is recorded',
+    registryLog[0].act, 'language.changed');
+  t.check('…with the reason that was given', registryLog[0].detail, 'Transferred to Madrid');
+
+  // AN ACT WITH NO COURSE IS THE INSTITUTION'S, and a lecturer has no standing
+  // to read that the registry moved somebody's language.
+  t.check('the lecturer does not see it',
+    (await S.auditLog(store, lecturer)).some((entry) => entry.act === 'language.changed'), false);
+
+  await t.refuses('a student cannot read the record at all',
+    () => S.auditLog(store, student));
+}
+
 t.section('Setting up a course: the lecturer’s half and the institution’s');
 {
   const store = fresh();

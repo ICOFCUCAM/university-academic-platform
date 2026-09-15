@@ -262,6 +262,7 @@ export const DEMO: Snapshot = {
   progress: [],
   attempts: [],
   recalls: [],
+  audit: [],
   costs: [],
   usage: [],
   notifications: [],

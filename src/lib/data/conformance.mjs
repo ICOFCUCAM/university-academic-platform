@@ -147,4 +147,29 @@ export async function conformance(make, label, t) {
     t.check('and the card has one row, not two', after.length, 1);
     t.check('…which is the new schedule', after[0].rung, 2);
   }
+
+  t.section(`${label}: the record only grows`);
+  {
+    const store = await make();
+    const course = (await store.courses())[0];
+    const entry = (id, act) => ({
+      id, at: '2026-03-04T09:00:00.000Z', act,
+      actorId: 'person-lecturer', actorName: 'Dr Amara Okonjo', actorRole: 'lecturer',
+      subject: 'structured notes', courseId: course.id,
+    });
+
+    await store.appendAudit(entry('e1', 'artefact.published'));
+    await store.appendAudit(entry('e2', 'artefact.withdrawn'));
+
+    const all = await store.auditEntries();
+    t.check('both are kept', all.length, 2);
+    // SAME MILLISECOND, RIGHT ORDER. Two acts a second apart is the easy
+    // case; two in the same tick is the one that misreports a withdrawal as
+    // having come before the publication it undid.
+    t.check('…newest first even at the same instant', all[0].id, 'e2');
+    t.check('and a course narrows it',
+      (await store.auditEntries(course.id)).length, 2);
+    t.check('…to that course only',
+      (await store.auditEntries('course-that-is-not-real')).length, 0);
+  }
 }

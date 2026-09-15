@@ -203,6 +203,26 @@ create index if not exists ls_progress_by_course on ls_progress (course_id);
 -- inside somebody else's university system, this platform reads their
 -- institution and never writes to it — so the university's standard voice,
 -- which is ours, lives here rather than in their row.
+-- THE RECORD OF WHO DID WHAT. Append and read: there is no delete policy and
+-- no update policy, deliberately — a log somebody can tidy is not a log. And
+-- nothing in it records reading: see src/lib/audit/audit.ts, where the list of
+-- auditable acts is closed and a test holds it against the words that would
+-- mean somebody's reading was being kept.
+create table if not exists ls_audit (
+  id          uuid primary key default gen_random_uuid(),
+  seq         bigserial,
+  at          timestamptz not null default now(),
+  act         text not null,
+  actor_id    uuid not null references auth.users (id),
+  actor_name  text not null,
+  actor_role  text not null,
+  subject     text not null,
+  course_id   uuid references courses (id) on delete set null,
+  detail      text
+);
+
+create index if not exists ls_audit_by_course on ls_audit (course_id, at desc);
+
 create table if not exists ls_settings (
   id             text primary key,
   standard_voice jsonb
@@ -363,6 +383,7 @@ alter table ls_quiz_attempts       enable row level security;
 alter table ls_progress            enable row level security;
 alter table ls_recalls             enable row level security;
 alter table ls_settings            enable row level security;
+alter table ls_audit               enable row level security;
 alter table ls_readings            enable row level security;
 alter table ls_assignments         enable row level security;
 alter table ls_submissions         enable row level security;
@@ -416,6 +437,15 @@ create policy ls_attempts_own on ls_quiz_attempts for all
 -- their own rows; a lecturer reads none of them and uses ls_cohort_shape.
 create policy ls_progress_own on ls_progress for all
   using (person_id = auth.uid()) with check (person_id = auth.uid());
+
+-- WHOEVER TEACHES A COURSE READS THAT COURSE'S ACTS, because they were done to
+-- their material. The institution's own acts — a working language moved, the
+-- university's voice changed — carry no course and are read through the
+-- service by the registry, which runs with the service role. There is no
+-- insert, update or delete policy here at all: every write goes through
+-- `service.noteInLog`, and nothing may ever remove a row.
+create policy ls_audit_read on ls_audit for select
+  using (course_id is not null and ls_teaches_course(course_id));
 
 -- Everybody signed in reads the institution's settings — the voice a lesson is
 -- spoken in is not a secret. Nobody writes them through this policy: the

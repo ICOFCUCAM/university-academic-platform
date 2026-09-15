@@ -46,6 +46,7 @@ import {
 import { mark, parseQuiz } from './study/quiz';
 import { PLATFORM_VOICES } from './voice/voices';
 import { settingsOf, type AccessibilitySettings } from './access/accessibility';
+import { isAudited, visibleTo, type AuditAct, type AuditEntry } from './audit/audit';
 import { parseFlashcards } from './study/flashcards';
 import { cardKey, holding, schedule, session, type Recall } from './study/repetition';
 import type { Engine } from './ai/provider';
@@ -161,6 +162,14 @@ export async function runStage(
   // The approval goes now, not when the new text arrives: a failed run must
   // not leave the old approval sitting on top of a half-written artefact.
   const demoted = integrity.clearsApproval ? clearApproval(artefact) : artefact;
+  if (integrity.clearsApproval) {
+    // A REGENERATION OVER SOMETHING SOMEBODY STOOD BEHIND. The approval is
+    // gone from this moment and the log says who asked for that.
+    await noteInLog(store, actor, 'artefact.regenerated', {
+      subject: `${artefact.kind.replace(/_/g, ' ')}, version ${artefact.version}`,
+      courseId: artefact.courseId,
+    });
+  }
   Object.assign(artefact, demoted);
   artefact.state = 'running';
   artefact.derivedFromId = source!.id;
@@ -402,6 +411,11 @@ export async function editArtefact(
   // regenerated: regenerating would throw away a lecturer's own corrections
   // downstream without asking.
   await markStale(store, artefact);
+  await noteInLog(store, actor, 'artefact.corrected', {
+    subject: `${artefact.kind.replace(/_/g, ' ')}, now version ${artefact.version}`,
+    courseId: artefact.courseId,
+    detail: note ?? 'Lecturer correction',
+  });
   return artefact;
 }
 
@@ -445,7 +459,12 @@ export async function approve(store: Store, actor: Actor, artefactId: string): P
   artefact.approvedByName = person?.name;
   artefact.approvedAt = now();
   artefact.updatedAt = now();
-  return store.saveArtefact(artefact);
+  const saved = await store.saveArtefact(artefact);
+  await noteInLog(store, actor, 'artefact.approved', {
+    subject: `${artefact.kind.replace(/_/g, ' ')}, version ${artefact.version}`,
+    courseId: artefact.courseId,
+  });
+  return saved;
 }
 
 export async function publish(store: Store, actor: Actor, artefactId: string): Promise<Artefact> {
@@ -457,7 +476,12 @@ export async function publish(store: Store, actor: Actor, artefactId: string): P
   artefact.state = 'published';
   artefact.publishedAt = now();
   artefact.updatedAt = now();
-  return store.saveArtefact(artefact);
+  const saved = await store.saveArtefact(artefact);
+  await noteInLog(store, actor, 'artefact.published', {
+    subject: `${artefact.kind.replace(/_/g, ' ')}, version ${artefact.version}`,
+    courseId: artefact.courseId,
+  });
+  return saved;
 }
 
 export async function withdraw(store: Store, actor: Actor, artefactId: string): Promise<Artefact> {
@@ -469,7 +493,14 @@ export async function withdraw(store: Store, actor: Actor, artefactId: string): 
   artefact.state = 'approved';
   artefact.publishedAt = undefined;
   artefact.updatedAt = now();
-  return store.saveArtefact(artefact);
+  const saved = await store.saveArtefact(artefact);
+  // THE ONE A UNIVERSITY ASKS ABOUT FIRST: material the cohort could read last
+  // week and cannot read this week, with a name against it.
+  await noteInLog(store, actor, 'artefact.withdrawn', {
+    subject: `${artefact.kind.replace(/_/g, ' ')}, version ${artefact.version}`,
+    courseId: artefact.courseId,
+  });
+  return saved;
 }
 
 /** ---- The course knowledge base ---------------------------------------- */
@@ -1258,7 +1289,12 @@ export async function approveTranslation(
   artefact.reviewedAt = now();
   artefact.state = artefact.state === 'published' ? 'published' : 'approved';
   artefact.updatedAt = now();
-  return store.saveArtefact(artefact);
+  const saved = await store.saveArtefact(artefact);
+  await noteInLog(store, actor, 'translation.approved', {
+    subject: `${artefact.kind.replace(/_/g, ' ')} in ${languageName(artefact.language ?? '')}`,
+    courseId: artefact.courseId,
+  });
+  return saved;
 }
 
 /** Which languages a lecture exists in, and what each one is worth. */
@@ -1307,12 +1343,17 @@ export async function enrol(
   if (!student) throw new Refused('No such student.');
 
   const existing = await store.enrolmentFor(courseId, studentId);
-  return store.saveEnrolment({
+  const enrolment = await store.saveEnrolment({
     id: existing?.id ?? randomUUID(),
     courseId,
     studentId,
     status: 'registered',
   });
+  await noteInLog(store, actor, 'enrolment.changed', {
+    subject: `${student.name} registered on ${course.code}`,
+    courseId,
+  });
+  return enrolment;
 }
 
 /** ---- The learning profile ---------------------------------------------- */
@@ -1351,7 +1392,12 @@ export async function setWorkingLanguage(
       },
     ],
   };
-  return store.savePerson(updated);
+  const saved = await store.savePerson(updated);
+  await noteInLog(store, actor, 'language.changed', {
+    subject: `${person.name}: ${person.workingLanguage ?? 'unset'} → ${language}`,
+    detail: reason.trim(),
+  });
+  return saved;
 }
 
 /**
@@ -1409,10 +1455,15 @@ export async function authoriseOwnVoice(
   }
   const person = await store.person(actor.id);
   if (!person) throw new Refused('No such person.');
-  return store.savePerson({
+  const saved = await store.savePerson({
     ...person,
     voiceConsent: { authorisedAt: now(), scope: authorisation.scope, note: authorisation.note },
   });
+  await noteInLog(store, actor, 'voice.authorised', {
+    subject: authorisation.scope === 'all-audio' ? 'all lecture audio' : 'translated audio only',
+    detail: authorisation.note,
+  });
+  return saved;
 }
 
 export async function revokeOwnVoice(store: Store, actor: Actor): Promise<Person> {
@@ -1422,10 +1473,12 @@ export async function revokeOwnVoice(store: Store, actor: Actor): Promise<Person
   // KEPT, NOT DELETED. "They authorised it in March and withdrew it in June"
   // is a fact the university may one day need; and `consentHolds` reads
   // `revokedAt` at listening time, so audio already made stops being offered.
-  return store.savePerson({
+  const saved = await store.savePerson({
     ...person,
     voiceConsent: { ...person.voiceConsent, revokedAt: now() },
   });
+  await noteInLog(store, actor, 'voice.revoked', { subject: 'their own voice' });
+  return saved;
 }
 
 /** ---- Studying: what a student did, and what a cohort did --------------- */
@@ -1777,6 +1830,58 @@ export async function workFor(
 
 /** ---- Telling somebody ---------------------------------------------------- */
 
+/**
+ * WRITING TO THE AUDIT LOG.
+ *
+ * Refuses an act that is not on `AUDITED_ACTS`, which is what keeps reading
+ * out of it: there is no path from a page to this function that can invent an
+ * act name. It never throws into the caller's work — an act that happened and
+ * a log that failed is better reported than rolled back — but a failure to
+ * record is not silent either.
+ */
+async function noteInLog(
+  store: Store, actor: Actor, act: AuditAct,
+  what: { subject: string; courseId?: string; detail?: string },
+): Promise<void> {
+  if (!isAudited(act)) return;
+  const person = await store.person(actor.id);
+  await store.appendAudit({
+    id: randomUUID(),
+    at: now(),
+    act,
+    actorId: actor.id,
+    actorName: person?.name ?? actor.id,
+    actorRole: actor.role,
+    subject: what.subject,
+    courseId: what.courseId,
+    detail: what.detail,
+  });
+}
+
+/**
+ * READING IT. The registry reads the institution's whole record; whoever
+ * teaches a course reads that course's acts, because they were done to their
+ * material. Nobody else reads any of it.
+ */
+export async function auditLog(
+  store: Store, actor: Actor, courseId?: string,
+): Promise<AuditEntry[]> {
+  const everything = can(actor.role, 'manage-people');
+  const mine = (await store.coursesFor(actor.id))
+    .filter((c) => c.lecturerIds.includes(actor.id))
+    .map((c) => c.id);
+
+  if (!everything && !mine.length) {
+    throw new Refused('The record of who did what is the institution’s, and the lecturer’s for their own courses.');
+  }
+  if (courseId && !everything && !mine.includes(courseId)) {
+    throw new Refused('That course is not one of yours.');
+  }
+
+  const entries = await store.auditEntries(courseId);
+  return visibleTo(entries, { role: actor.role, coursesTaught: mine, everything });
+}
+
 export async function tell(
   store: Store, personId: string, kind: NotificationKind, subject: string, link?: string,
 ): Promise<void> {
@@ -1837,7 +1942,12 @@ export async function setCourseTerminology(
 ): Promise<Course> {
   const course = await courseIRun(store, actor, courseId);
   const cleaned = [...new Set(terms.map((t) => t.trim()).filter(Boolean))];
-  return store.saveCourse({ ...course, terminology: cleaned });
+  const saved = await store.saveCourse({ ...course, terminology: cleaned });
+  await noteInLog(store, actor, 'course.terminology', {
+    subject: cleaned.length ? `${cleaned.length} terms: ${cleaned.join(', ')}` : 'the list is now empty',
+    courseId,
+  });
+  return saved;
 }
 
 /**
@@ -1852,7 +1962,11 @@ export async function setCompletionRule(
   const course = await courseIRun(store, actor, courseId);
   if (!rule) {
     const { completion: _removed, ...without } = course;
-    return store.saveCourse(without);
+    const cleared = await store.saveCourse(without);
+    await noteInLog(store, actor, 'course.completion', {
+      subject: 'this course now certifies nothing', courseId,
+    });
+    return cleared;
   }
 
   const bounded = (value: number | undefined, max: number) =>
@@ -1866,7 +1980,12 @@ export async function setCompletionRule(
   for (const key of Object.keys(cleaned) as (keyof CompletionRule)[]) {
     if (cleaned[key] === undefined) delete cleaned[key];
   }
-  return store.saveCourse({ ...course, completion: cleaned });
+  const saved = await store.saveCourse({ ...course, completion: cleaned });
+  await noteInLog(store, actor, 'course.completion', {
+    subject: Object.entries(cleaned).map(([k, v]) => `${k} ${v}`).join(', '),
+    courseId,
+  });
+  return saved;
 }
 
 /**
@@ -1899,7 +2018,12 @@ export async function setCourseVoice(
 
   const next = { ...course, allowedVoices: allowed };
   if (wanted) next.defaultVoice = wanted; else delete next.defaultVoice;
-  return store.saveCourse(next);
+  const saved = await store.saveCourse(next);
+  await noteInLog(store, actor, 'course.voice', {
+    subject: `${wanted ?? 'no default'}${allowed?.length ? `, ${allowed.length} allowed` : ''}`,
+    courseId,
+  });
+  return saved;
 }
 
 /**
@@ -1915,18 +2039,22 @@ export async function setInstitutionVoice(
   const university = await store.university();
   if (!voice) {
     const { standardVoice: _removed, ...without } = university;
-    return store.saveUniversity(without);
+    const cleared = await store.saveUniversity(without);
+    await noteInLog(store, actor, 'institution.voice', { subject: 'removed' });
+    return cleared;
   }
   if (!voice.id.trim() || !voice.label.trim()) {
     throw new Refused('A voice needs an id the speech service knows and a name a student will see.');
   }
-  return store.saveUniversity({
+  const saved = await store.saveUniversity({
     ...university,
     standardVoice: {
       id: voice.id.trim(), kind: 'university',
       label: voice.label.trim(), blurb: voice.blurb?.trim() || 'The university’s own voice.',
     },
   });
+  await noteInLog(store, actor, 'institution.voice', { subject: voice.label.trim() });
+  return saved;
 }
 
 /**
@@ -2047,6 +2175,11 @@ export async function issueCertificate(
 
   await store.saveCertificate(certificate);
   await tell(store, studentId, 'work-returned', `${where.course.code} — your certificate`, '/profile');
+  await noteInLog(store, actor, 'certificate.issued', {
+    subject: `${student.name} — ${where.course.code}`,
+    courseId,
+    detail: certificate.code,
+  });
   return certificate;
 }
 

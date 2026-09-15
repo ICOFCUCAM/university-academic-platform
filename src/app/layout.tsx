@@ -5,6 +5,7 @@ import { currentActor } from '@/lib/session';
 import { getStore } from '@/lib/data';
 import { unread } from '@/lib/notify/notifications';
 import { bodyAttributes, settingsOf } from '@/lib/access/accessibility';
+import { can } from '@/lib/capabilities';
 
 export const metadata: Metadata = {
   title: 'Lecture Studio',
@@ -20,12 +21,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // different face should never watch the page arrive in the one they cannot
   // read and then correct itself.
   const me = await getStore().person(actor.id);
+  // Whoever may read the record is offered it; nobody else is shown the door.
+  const mine = await getStore().coursesFor(actor.id);
+  const canReadRecord = can(actor.role, 'manage-people')
+    || mine.some((course) => course.lecturerIds.includes(actor.id));
   const presentation = bodyAttributes(settingsOf(me?.accessibility));
 
   return (
     <html lang={actor.workingLanguage ?? 'en'}>
       <body {...presentation}>
-        <AppShell actor={actor} people={people} unread={waiting}>{children}</AppShell>
+        <AppShell actor={actor} people={people} unread={waiting} canReadRecord={canReadRecord}>{children}</AppShell>
       </body>
     </html>
   );

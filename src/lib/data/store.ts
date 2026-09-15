@@ -24,6 +24,7 @@ import type {
 import type { LectureExtract } from '../knowledge/types';
 import type { ProgressRecord } from '../study/progress';
 import type { Recall } from '../study/repetition';
+import type { AuditEntry } from '../audit/audit';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -95,6 +96,13 @@ export interface Store {
   recordCost(cost: RunCost): Promise<void>;
   usage(personId: string): Promise<UsageRecord[]>;
   recordUsage(record: UsageRecord): Promise<void>;
+
+  /**
+   * THE AUDIT LOG, WITH NO DELETE. An append and a read: a log somebody can
+   * tidy is not a log. `courseId` narrows it for a lecturer reading their own.
+   */
+  auditEntries(courseId?: string): Promise<AuditEntry[]>;
+  appendAudit(entry: AuditEntry): Promise<void>;
 
   notifications(personId: string): Promise<Notification[]>;
   notify(notification: Notification): Promise<void>;

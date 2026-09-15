@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, BookOpen, GraduationCap, LayoutDashboard, Settings, Sparkles, UserRound } from 'lucide-react';
+import { Bell, BookOpen, GraduationCap, LayoutDashboard, ScrollText, Settings, Sparkles, UserRound } from 'lucide-react';
 import type { Person } from '@/lib/domain/types';
 import { ROLE_LABEL, type Role } from '@/lib/capabilities';
 import { direction } from '@/lib/i18n/languages';
@@ -18,12 +18,19 @@ const NAV = [
 ] as const;
 
 export function AppShell({
-  actor, people, unread = 0, children,
+  actor, people, unread = 0, canReadRecord = false, children,
 }: {
   actor: { id: string; role: Role; name: string; workingLanguage?: string };
   people: Person[];
   /** How many notifications are waiting. Shown on the bell, nowhere else. */
   unread?: number;
+  /**
+   * Whether "Who did what" is offered at all. A student who cannot read the
+   * record is not shown a door that refuses them: the refusal exists in the
+   * service, and the navigation should not advertise a room they may not
+   * enter.
+   */
+  canReadRecord?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -51,7 +58,9 @@ export function AppShell({
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {NAV.map(({ href, key, icon: Icon }) => {
+          {[...NAV, ...(canReadRecord
+            ? [{ href: '/audit', key: 'nav.record' as const, icon: ScrollText }] : [])
+          ].map(({ href, key, icon: Icon }) => {
             const label = t(key as UIKey);
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (

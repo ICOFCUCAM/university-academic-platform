@@ -16,6 +16,7 @@ import type {
 } from '../domain/types';
 import type { ProgressRecord } from '../study/progress';
 import type { Recall } from '../study/repetition';
+import type { AuditEntry } from '../audit/audit';
 import type { RunCost, UsageRecord } from '../billing/usage';
 import type { Notification } from '../notify/notifications';
 import type { Certificate } from '../credential/certificate';
@@ -37,6 +38,7 @@ export interface Snapshot {
   progress: ProgressRecord[];
   attempts: QuizAttempt[];
   recalls: Recall[];
+  audit: AuditEntry[];
   costs: RunCost[];
   usage: UsageRecord[];
   notifications: Notification[];
@@ -204,6 +206,22 @@ export function createMemoryStore(initial: Snapshot): Store {
     async recordCost(cost) { db.costs.push(cost); save(); },
     async usage(personId) { return clone(db.usage.filter((u) => u.personId === personId)); },
     async recordUsage(record) { db.usage.push(record); save(); },
+
+    async auditEntries(courseId) {
+      // NEWEST FIRST, AND APPEND ORDER BREAKS A TIE. Two acts in the same
+      // millisecond are ordered by which happened first, not by whichever
+      // way an unstable comparison happened to fall — a log that reports
+      // "published" after "withdrawn" is telling the university the opposite
+      // of what took place.
+      return clone([...(db.audit ?? [])].reverse()
+        .filter((e) => !courseId || e.courseId === courseId)
+        .sort((a, b) => b.at.localeCompare(a.at)));
+    },
+    async appendAudit(entry) {
+      db.audit = db.audit ?? [];
+      db.audit.push(entry);
+      save();
+    },
 
     async notifications(personId) {
       return clone(db.notifications.filter((n) => n.personId === personId)
