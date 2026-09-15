@@ -124,6 +124,43 @@ const lectures: Lecture[] = [
   lecture(6, 'Photosynthesis', 'Light into chemical energy, in two stages that need different things.'),
 ];
 
+// A TRANSLATION IN THE DEMONSTRATION, because the multilingual layer is only
+// legible when a second language is actually on the screen: the French notes
+// below are a rendering of the approved English master, unreviewed — which is
+// exactly what the platform says about them.
+const L6_NOTES_FR = `
+## En un paragraphe
+La photosynthèse convertit l'énergie lumineuse en énergie chimique que la cellule peut dépenser, et elle est à la base de presque toutes les chaînes alimentaires. Elle se déroule en deux étapes aux exigences différentes : la réaction dépendante de la lumière, dans la membrane du thylakoïde, qui a besoin de lumière et produit de l'ATP et du NADPH en scindant l'eau, et le cycle de Calvin, dans le stroma, qui a besoin de ces produits plutôt que de la lumière elle-même.
+
+## Ce que vous devez savoir faire ensuite
+- Nommer les deux étapes de la photosynthèse et dire où chacune se déroule.
+- Expliquer ce que chaque étape exige et ce qu'elle produit.
+- Expliquer pourquoi « réaction obscure » est un nom trompeur pour le cycle de Calvin.
+- Écrire et interpréter l'équation bilan de la photosynthèse.
+
+## L'argument
+### La réaction dépendante de la lumière
+Se déroule dans la membrane du thylakoïde. Exige la lumière directement. Produit de l'ATP et du NADPH. L'eau y est scindée, et l'oxygène libéré est un déchet de cette scission.
+
+### Le cycle de Calvin
+Se déroule dans le stroma. N'exige pas la lumière directement ; il exige l'ATP et le NADPH de la première étape. Le dioxyde de carbone est fixé sur un sucre à cinq carbones par la rubisco. Le cycle tourne six fois pour produire une molécule de glucose.
+
+### L'équation bilan
+Six dioxyde de carbone et six eau, avec la lumière, donnent un glucose et six oxygène. Vraie comme résumé et comme compression de dizaines d'étapes.
+
+## Termes clés
+- **Photosynthèse** — le processus par lequel une plante convertit l'énergie lumineuse en énergie chimique que la cellule peut dépenser.
+- **Réaction dépendante de la lumière** — l'étape, dans la membrane du thylakoïde, qui exige la lumière et produit de l'ATP et du NADPH.
+- **Cycle de Calvin** — l'étape, dans le stroma, qui fixe le dioxyde de carbone à l'aide de l'ATP et du NADPH de la réaction dépendante de la lumière.
+- **Rubisco** — l'enzyme qui fixe le dioxyde de carbone sur un sucre à cinq carbones ; la protéine la plus abondante sur Terre et, pour une enzyme, lente.
+
+## Ce que le professeur a souligné
+Le cycle de Calvin n'exige pas la lumière directement et ne doit pas être appelé réaction obscure. L'examen portera sur les deux étapes, où chacune se déroule, ce que chacune exige et ce que chacune produit.
+
+## Laissé ouvert
+Rien n'est laissé ouvert.
+`.trim();
+
 const artefacts: Artefact[] = [
   // Lecture 05 — through the pipeline and published.
   artefact('lecture-05', 'recording', '', 'published', null),
@@ -137,6 +174,18 @@ const artefacts: Artefact[] = [
   artefact('lecture-06', 'corrected_text', L6_TEXT, 'published', 'lecture-06-transcript'),
   artefact('lecture-06', 'structured_notes', L6_NOTES, 'published', 'lecture-06-corrected_text'),
   artefact('lecture-06', 'revision_materials', `## Recall\nQ. Where does the light-dependent reaction occur?\nA. In the thylakoid membrane.\nQ. What does the light-dependent reaction produce?\nA. ATP and NADPH; oxygen is released as a waste product of splitting water.\nQ. Where does the Calvin cycle occur?\nA. In the stroma.\nQ. What does the Calvin cycle require?\nA. The ATP and NADPH made by the light-dependent reaction, not light directly.\nQ. Which enzyme fixes carbon dioxide?\nA. Rubisco.\nQ. How many turns of the Calvin cycle yield one glucose?\nA. Six.\n\n## Where students go wrong\nCalling the Calvin cycle the "dark reaction". The lecture warns that it does not happen in the dark; it happens when the light-dependent stage has supplied ATP and NADPH.`, 'published', 'lecture-06-structured_notes'),
+
+  // The French rendering of Lecture 06's notes: derived from the approved
+  // English master, published, and read by nobody who speaks French — which
+  // is what every screen showing it says.
+  {
+    ...artefact('lecture-06', 'structured_notes', L6_NOTES_FR, 'published', 'lecture-06-corrected_text'),
+    id: 'lecture-06-structured_notes-fr',
+    language: 'fr',
+    translatedFromId: 'lecture-06-structured_notes',
+    translationStanding: 'unreviewed',
+    producedBy: 'sample data',
+  },
 
   // Lecture 07 in progress — recorded and transcribed, awaiting the lecturer.
   artefact('lecture-04', 'recording', '', 'ready', null),
@@ -161,12 +210,17 @@ export const DEMO: Snapshot = {
     // ordinary biology; on a theological course they are the names a
     // substitution would destroy. The check is the same either way.
     terminology: ['thylakoid', 'granum', 'stroma', 'rubisco', 'Calvin cycle'],
+    originalLanguage: 'en',
+    offeredLanguages: ['fr', 'es', 'ar'],
     status: 'running',
   }],
   people: [
     { id: LECTURER, name: 'Dr Amara Okonjo', email: 'a.okonjo@example.edu', role: 'lecturer' },
     { id: 'person-student', name: 'Joseph Adeyemi', email: 'j.adeyemi@example.edu', role: 'student' },
     { id: 'person-registry', name: 'Registry Office', email: 'registry@example.edu', role: 'registry' },
+    // Reads Arabic and French, and vouches for what the translations say. Not
+    // a second author: they cannot touch the lecturer's original.
+    { id: 'person-reviewer', name: 'Nadia Haddad', email: 'n.haddad@example.edu', role: 'translation-reviewer' },
   ],
   enrolments: [{ id: 'enrol-1', courseId: 'course-biol101', studentId: 'person-student', status: 'registered' }],
   lectures,

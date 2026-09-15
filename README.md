@@ -130,6 +130,46 @@ The winner is the model that preserves best, not the one that knows most.
 An administrator cannot edit a lecture, approve one, publish one, delete a
 recording, or read an unapproved draft. That is not a setting.
 
+## One lecture. Every language.
+
+**Teach once. Learn everywhere.** A lecturer teaches in their own language; a
+student in Brazil, France, Kenya or China gets the same course — notes to read
+and copy, a lesson to listen to, a quiz, and the Course AI — in theirs.
+
+```
+MASTER — English, lecturer approved
+   ├── Français   ├── Español    ├── Português
+   ├── العربية    ├── 中文        ├── Kiswahili
+   ├── Deutsch    └── Norsk …
+```
+
+**Translation happens only after the lecturer has approved the original.**
+Translating a draft multiplies one mistake into six languages and then asks a
+lecturer who reads one of them to find it. The gate refuses it.
+
+Every language is a derivative of the **master**, never of another translation,
+so six languages are six renderings of one lecture rather than a chain that has
+drifted. The original governs: where a translation differs, the original is what
+was taught and what the student is examined on, and it is one click away on
+every translated page.
+
+- **Terminology crosses untouched.** The same protection layer runs here, and
+  for a sharper reason: a model translating *Yahusha HaMashiach* will otherwise
+  reach for the target language's conventional name. It never sees the term —
+  only a marker — and a translation that lost one is rejected.
+- **Checked without reading the language.** Nobody here reads all nine, so the
+  validator checks what is true in every language: the lecturer's protected
+  terms, every figure the lecture states (١٩١٤ counts as 1914), the same
+  headings, the same number of questions, and a length that is not absurd.
+- **Who read it is on the page.** A lecturer cannot approve a language they do
+  not read — the capability is held by a translation reviewer — so a
+  translation nobody has checked says exactly that, every time it is shown.
+- **A correction to the original makes every translation stale**, and says so
+  rather than continuing to look approved.
+- **Audio in each language.** "15-minute lesson" means *about* fifteen minutes:
+  the same lecture is 15:00 in English, 15:12 in French, 15:20 in Arabic.
+  Trimming the Arabic would mean cutting a sentence the lecturer said.
+
 ## The Course AI
 
 Restricted to **one course's published lectures**. Ask it:
@@ -139,6 +179,7 @@ Restricted to **one course's published lectures**. Ask it:
 - *"Give me a simple explanation."* / *"Now the university-level explanation."* — same material, the register the student asked for
 - *"Create a 10-question test."* — built from the lectures, not from the internet
 - *"Create a 15-minute audio revision covering lectures 1–6."*
+- …and it answers in the student's language while quoting the lecturer's own sentence beside its rendering, because that sentence is the one they are examined on.
 
 And when the course does not cover it, it says so and names what the course
 *does* cover. A confident answer from outside the syllabus is how a student

@@ -37,6 +37,15 @@ export const CAPABILITIES = [
   'withdraw-own-material',   // take it back — it was never the university's
   'export-own-material',     // and leave with it
 
+  // ---- Reaching students who do not read the lecture's language ----------
+  //
+  // Translation is a thing done TO an approved lecture, so asking for one is
+  // the lecturer's. Vouching for the result is not: a lecturer who does not
+  // read Arabic cannot approve the Arabic, and a platform that let them
+  // would be manufacturing an approval nobody gave.
+  'request-translation',
+  'approve-translation',
+
   // ---- Teaching around the material --------------------------------------
   'view-own-courses',
   'view-registered-students',
@@ -57,6 +66,7 @@ export type Role =
   | 'coordinator'  // runs a department's courses. Environment, not content.
   | 'lecturer'     // owns the academic material of their courses
   | 'assistant'    // helps a lecturer. Never approves, never publishes.
+  | 'translation-reviewer' // reads one language, and vouches for what it says
   | 'student';
 
 /**
@@ -77,6 +87,8 @@ export const LECTURER_CAPABILITIES: Capability[] = [
   'view-engagement',
   'ask-course-ai',
   'change-own-password',
+  // Asks for the translation; does not vouch for it.
+  'request-translation',
 ];
 
 const MATRIX: Record<Role, Capability[]> = {
@@ -107,6 +119,16 @@ const MATRIX: Record<Role, Capability[]> = {
     'view-own-courses', 'view-registered-students', 'change-own-password',
   ],
 
+  // READS ONE LANGUAGE AND VOUCHES FOR WHAT IT SAYS. Not a second author: they
+  // cannot correct the lecturer's original, cannot publish it, and cannot
+  // touch a course they were not asked onto. What they can do is say "this
+  // Arabic says what the English says", which is the one thing a lecturer who
+  // does not read Arabic cannot say.
+  'translation-reviewer': [
+    'approve-translation', 'correct-derived-text',
+    'view-own-courses', 'study-published-material', 'change-own-password',
+  ],
+
   student: ['study-published-material', 'ask-course-ai', 'change-own-password'],
 };
 
@@ -123,6 +145,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   coordinator: 'Coordinator',
   lecturer: 'Lecturer',
   assistant: 'Teaching assistant',
+  'translation-reviewer': 'Translation reviewer',
   student: 'Student',
 };
 
@@ -137,4 +160,6 @@ export const REFUSAL: Partial<Record<Capability, string>> = {
   'manage-courses': 'The course environment is opened and closed by the university.',
   'manage-enrolment': 'Enrolment is held by the registry.',
   'assign-lecturers': 'Who teaches a course is the university’s decision.',
+  'approve-translation': 'A translation is vouched for by somebody who reads that language.',
+  'request-translation': 'Translation is asked for by the lecturer whose lecture it is.',
 };

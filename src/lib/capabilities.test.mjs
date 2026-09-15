@@ -26,8 +26,14 @@ const MAY = [
   ['see what is being studied', 'view-engagement'],
   ['ask the Course AI', 'ask-course-ai'],
   ['change their own password, as every account may', 'change-own-password'],
+  // ASKS FOR A TRANSLATION, AND DOES NOT VOUCH FOR IT. The pair below is the
+  // whole multilingual rule in two lines.
+  ['ask for their lecture to be translated', 'request-translation'],
 ];
 const MAY_NOT = [
+  // A lecturer who does not read Arabic cannot approve the Arabic, and a
+  // platform that let them would be manufacturing an approval nobody gave.
+  ['vouch for a translation they cannot read', 'approve-translation'],
   ['open or retire a course', 'manage-courses'],
   ['say who teaches it', 'assign-lecturers'],
   ['enrol or remove a student', 'manage-enrolment'],
@@ -65,6 +71,14 @@ t.check('may upload', C.can('assistant', 'upload-source-material'), true);
 t.check('may run the engine', C.can('assistant', 'run-transformation'), true);
 t.check('may not approve', C.can('assistant', 'approve-artefact'), false);
 t.check('may not publish', C.can('assistant', 'publish-to-students'), false);
+
+t.section('A translation reviewer vouches for one language, and authors nothing');
+t.check('may approve a translation', C.can('translation-reviewer', 'approve-translation'), true);
+t.check('may correct the translated text', C.can('translation-reviewer', 'correct-derived-text'), true);
+t.check('may NOT publish', C.can('translation-reviewer', 'publish-to-students'), false);
+t.check('may NOT upload a lecture', C.can('translation-reviewer', 'upload-source-material'), false);
+t.check('may NOT approve the lecture itself', C.can('translation-reviewer', 'approve-artefact'), false);
+t.check('may NOT ask for more translations', C.can('translation-reviewer', 'request-translation'), false);
 
 t.section('A student consumes and interacts — and uploads nothing');
 t.check('may study what was published', C.can('student', 'study-published-material'), true);

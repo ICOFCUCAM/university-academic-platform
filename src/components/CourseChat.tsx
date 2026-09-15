@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Bot, CornerDownLeft, Loader2 } from 'lucide-react';
+import { Bot, CornerDownLeft, Globe, Loader2 } from 'lucide-react';
 import { Markdown } from '@/components/Markdown';
+import { direction, LANGUAGES, LANGUAGE_BY_CODE } from '@/lib/i18n/languages';
 
 export interface Turn {
   role: 'student' | 'tutor';
@@ -24,9 +25,13 @@ export interface Turn {
  */
 export function CourseChat({
   courseId, lectureSequence, suggestions, followUps = [], compact = false,
+  courseLanguage = 'en', offeredLanguages = [],
 }: {
   courseId: string;
   lectureSequence?: number;
+  /** The language the course is taught in. Its answers are grounded there. */
+  courseLanguage?: string;
+  offeredLanguages?: string[];
   /** Shown before the first question: each has to stand on its own. */
   suggestions: string[];
   /**
@@ -40,6 +45,7 @@ export function CourseChat({
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
+  const [language, setLanguage] = useState(courseLanguage);
   const box = useRef<HTMLDivElement>(null);
 
   async function ask(text: string) {
@@ -51,7 +57,7 @@ export function CourseChat({
       const response = await fetch(`/api/courses/${courseId}/ask`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ question: text, lectureSequence }),
+        body: JSON.stringify({ question: text, lectureSequence, language }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -141,7 +147,9 @@ export function CourseChat({
               {turn.answeredIn === 'this-lecture' && (
                 <p className="mb-2 text-[11px] uppercase tracking-wide text-ok">From this lecture</p>
               )}
-              <Markdown source={turn.body} />
+              <div dir={direction(language)}>
+                <Markdown source={turn.body} />
+              </div>
 
               {turn.citations && turn.citations.length > 0 && (
                 <div className="mt-3 border-t border-page-line pt-3">
@@ -180,6 +188,33 @@ export function CourseChat({
         )}
       </div>
 
+      {/* THE COURSE IS TAUGHT IN ONE LANGUAGE AND ANSWERED IN THE STUDENT'S.
+          The corpus is not translated to answer a question — the tutor reads
+          the lecturer's original and quotes it beside its rendering, because
+          the original sentence is the one the student is examined on. */}
+      {[courseLanguage, ...offeredLanguages].length > 1 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Globe size={14} className="text-ink-faint" />
+          {[...new Set([courseLanguage, ...offeredLanguages, ...LANGUAGES.map((l) => l.code)])]
+            .filter((code) => [courseLanguage, ...offeredLanguages].includes(code))
+            .map((code) => (
+              <button
+                key={code} type="button" onClick={() => setLanguage(code)}
+                className={`rounded-full border px-2.5 py-1 text-xs ${
+                  language === code ? 'border-brand bg-brand text-white' : 'border-page-line text-ink-soft'
+                }`}
+              >
+                {LANGUAGE_BY_CODE[code]?.endonym ?? code}
+                {code === courseLanguage && (
+                  <span className={`ml-1 text-[10px] uppercase ${language === code ? 'text-white/70' : 'text-ink-faint'}`}>
+                    taught in
+                  </span>
+                )}
+              </button>
+            ))}
+        </div>
+      )}
+
       <form
         className="mt-4 flex items-center gap-2"
         onSubmit={(event) => { event.preventDefault(); ask(question); }}
@@ -188,6 +223,7 @@ export function CourseChat({
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder={lectureSequence ? 'Ask about this lecture…' : 'Ask about this course…'}
+          dir={direction(language)}
           className="flex-1 rounded-md border border-page-line bg-white px-3.5 py-2.5 text-sm"
         />
         <button

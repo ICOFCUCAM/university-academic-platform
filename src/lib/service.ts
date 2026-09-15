@@ -19,6 +19,7 @@ import type {
   Artefact, ArtefactKind, ArtefactVersion, Lecture, Register, StudyAid,
 } from './domain/types';
 import { mayAct, type Actor } from './domain/ownership';
+import { can } from './capabilities';
 import { buildKnowledgeBase, emptyKnowledgeBase } from './knowledge/build';
 import type { CourseKnowledgeBase } from './knowledge/types';
 import { mayRun, STAGE_BY_KIND, staleAfterEdit, studentFacingKinds } from './pipeline/stages';
@@ -27,6 +28,9 @@ import { MODE_BY_ID, planSegments } from './ai/audioModes';
 import { answer, type Passage } from './ai/tutor';
 import { verifyTransformation } from './ai/verify';
 import { protectTerms, restoreTerms, validateTerminology } from './ai/terminology';
+import { translationPrompt, tutorLanguageNote } from './i18n/translate';
+import { validateTranslation } from './i18n/validate';
+import { LANGUAGE_BY_CODE, languageName, TRANSLATABLE as TRANSLATABLE_KINDS } from './i18n/languages';
 import { applyDecisions, findUnusual, type WordDecision } from './ai/unusual';
 import type { Engine } from './ai/provider';
 import { callAs } from './ai/roles';
@@ -290,6 +294,18 @@ async function markStale(store: Store, source: Artefact) {
   const siblings = await store.artefacts(source.lectureId);
   const stale = staleAfterEdit(source.kind);
   for (const sibling of siblings) {
+    // ---- EVERY TRANSLATION OF THIS ARTEFACT ---------------------------
+    //
+    // A correction that reaches the notes and not their Arabic leaves a
+    // cohort reading the uncorrected lecture in the one language nobody at
+    // this university checks.
+    if (sibling.translatedFromId === source.id) {
+      if (sibling.staleSince) continue;
+      sibling.staleSince = now();
+      sibling.translationStanding = 'stale';
+      await store.saveArtefact(sibling);
+      continue;
+    }
     if (!stale.includes(sibling.kind)) continue;
     if (sibling.state === 'absent' || sibling.staleSince) continue;
     sibling.staleSince = now();
@@ -405,7 +421,11 @@ export type AskScope = { lectureSequence?: number };
 
 export async function askCourseAI(
   store: Store, e: Engine, actor: Actor, courseId: string, question: string,
-  options: { register?: Register | null; conversationId?: string; scope?: AskScope } = {},
+  options: {
+    register?: Register | null; conversationId?: string; scope?: AskScope;
+    /** The language the student reads. The course is taught in its own. */
+    language?: string;
+  } = {},
 ) {
   const where = await scene(store, courseId, actor.id);
   const teaching = where.course.lecturerIds.includes(actor.id);
@@ -430,17 +450,24 @@ export async function askCourseAI(
     ? (await store.messages(options.conversationId)).slice(-6).map((m) => ({ role: m.role, body: m.body }))
     : [];
 
+  // THE STUDENT'S LANGUAGE, THE COURSE'S CORPUS. The material is not
+  // translated first — that would mean translating a course to answer one
+  // question — so the tutor reads the lecturer's original and answers in the
+  // student's language, quoting the original sentence beside its rendering
+  // because that is the sentence the student is examined on.
+  const courseLanguage = where.course.originalLanguage ?? 'en';
+  const languageNote = options.language ? tutorLanguageNote(options.language, courseLanguage) : '';
+
+  const ask = { question, passages, knowledge, register: options.register, history, languageNote };
   const narrow = options.scope?.lectureSequence;
   if (narrow) {
     const here = passages.filter((p) => p.lectureSequence === narrow);
     if (here.length) {
-      const first = await answer(e, {
-        question, passages: here, knowledge, register: options.register, history,
-      });
+      const first = await answer(e, { ...ask, passages: here });
       if (!first.refusedReason) return { ...first, answeredIn: 'this-lecture' as const };
     }
     // Not here. Widen to the course, and say that is what happened.
-    const wider = await answer(e, { question, passages, knowledge, register: options.register, history });
+    const wider = await answer(e, ask);
     if (wider.refusedReason) return { ...wider, answeredIn: 'course' as const };
     const elsewhere = [...new Set(wider.citations.map((c) => c.lectureSequence))]
       .sort((a, b) => a - b)
@@ -453,7 +480,7 @@ export async function askCourseAI(
     };
   }
 
-  return { ...(await answer(e, { question, passages, knowledge, register: options.register, history })), answeredIn: 'course' as const };
+  return { ...(await answer(e, ask)), answeredIn: 'course' as const };
 }
 
 /** ---- What the Course AI makes ----------------------------------------- */
@@ -697,4 +724,209 @@ export async function recordWordCheck(
   // A check is about the words that are there now. Correcting the text later
   // clears it, because the words changed after somebody read them.
   return store.saveArtefact(updated);
+}
+
+/** ---- The translation engine ------------------------------------------- */
+
+/**
+ * WHAT IS CARRIED INTO ANOTHER LANGUAGE, AND WHAT IS NOT.
+ *
+ * The four a student reads or listens to. The transcript is working material
+ * and nobody revises from it in any language; the knowledge extraction is the
+ * course's own index, read by the Course AI in the lecture's language, and
+ * translating it would give the course two indexes that could disagree.
+ */
+export const TRANSLATABLE: ArtefactKind[] = [...TRANSLATABLE_KINDS];
+
+export async function translateArtefact(
+  store: Store, e: Engine, actor: Actor, artefactId: string, targetLanguage: string,
+): Promise<Artefact> {
+  const original = await store.artefact(artefactId);
+  if (!original) throw new Refused('No such artefact.');
+  const where = await sceneOf(store, original, actor.id);
+
+  if (!can(actor.role, 'request-translation')) {
+    throw new Refused('Translation is asked for by the lecturer whose lecture it is.');
+  }
+  const permitted = mayAct(actor, 'transform', original, where);
+  if (!permitted.allowed) throw new Refused(permitted.reason!);
+
+  if (!LANGUAGE_BY_CODE[targetLanguage]) throw new Refused(`This platform is not set up for ${targetLanguage}.`);
+  if (!TRANSLATABLE.includes(original.kind)) {
+    throw new Refused(`${original.kind.replace(/_/g, ' ')} is not translated — see TRANSLATABLE in service.ts.`);
+  }
+  if (original.translatedFromId) {
+    // NEVER A TRANSLATION OF A TRANSLATION. Each language carries from the
+    // lecturer's own approved original, so six languages are six renderings of
+    // one lecture rather than a chain in which the sixth has drifted.
+    throw new Refused('Translate from the lecturer’s original, not from another translation.');
+  }
+
+  // ---- THE GATE ---------------------------------------------------------
+  //
+  //   … → LECTURER REVIEW → ✅ FINAL APPROVAL → TRANSLATION ENGINE
+  //
+  // Translating a draft multiplies one mistake into six languages and then
+  // asks a lecturer who reads one of them to find it.
+  if (original.state !== 'approved' && original.state !== 'published') {
+    throw new Refused(
+      'Translation happens after approval. Approve the original first — a draft translated into six languages is one mistake in six places.',
+    );
+  }
+
+  const sourceLanguage = original.language
+    ?? where.course.originalLanguage
+    ?? 'en';
+  if (sourceLanguage === targetLanguage) {
+    throw new Refused(`This lecture is already in ${languageName(targetLanguage)}.`);
+  }
+
+  const existing = (await store.artefacts(original.lectureId))
+    .find((a) => a.translatedFromId === original.id && a.language === targetLanguage);
+
+  const artefact: Artefact = existing ?? {
+    id: randomUUID(),
+    lectureId: original.lectureId,
+    courseId: original.courseId,
+    kind: original.kind,
+    origin: 'ai',
+    // STILL THE LECTURER'S. A translation of somebody's lecture is their
+    // lecture; the reviewer vouches for the rendering, they do not own it.
+    ownerId: original.ownerId,
+    state: 'running',
+    derivedFromId: original.derivedFromId,
+    translatedFromId: original.id,
+    language: targetLanguage,
+    translationStanding: 'unreviewed',
+    createdAt: now(),
+    updatedAt: now(),
+    version: 0,
+    correctedByLecturer: false,
+  };
+  artefact.state = 'running';
+  artefact.error = undefined;
+  artefact.staleSince = undefined;
+  await store.saveArtefact(artefact);
+
+  try {
+    // Protection, translation, restoration, validation — the same layer the
+    // original pipeline uses, and for a sharper reason: a model translating
+    // "Yahusha HaMashiach" will otherwise render it into the target language's
+    // conventional name without hesitating.
+    const guarded = protectTerms(original.body ?? '', { glossary: where.course.terminology });
+    const prompt = translationPrompt(original.kind, targetLanguage, sourceLanguage, guarded.text);
+
+    const result = await callAs(e, 'transformation', {
+      system: prompt.system,
+      user: prompt.user,
+      maxTokens: 32000,
+      effort: 'high',
+    });
+
+    // Checked while the markers are still in place, so "was the lecturer's
+    // term carried across?" is a question about markers and not about the
+    // target language's orthography.
+    const shape = validateTranslation(guarded.text, result.text);
+    const restored = restoreTerms(result.text, guarded.markers);
+    const terms = validateTerminology(original.body ?? '', restored.text, {
+      glossary: where.course.terminology,
+      missingProtected: restored.missing,
+    });
+
+    artefact.producedBy = result.producedBy;
+    artefact.terminology = terms.findings;
+    artefact.translationFindings = shape.findings;
+
+    if (!shape.ok || !terms.ok) {
+      artefact.state = 'failed';
+      artefact.error = shape.rejection ?? terms.rejection;
+      artefact.updatedAt = now();
+      return store.saveArtefact(artefact);
+    }
+
+    artefact.body = restored.text;
+    artefact.state = 'ready';
+    artefact.translationStanding = 'unreviewed';
+    artefact.version += 1;
+    artefact.updatedAt = now();
+    await store.addVersion({
+      id: randomUUID(),
+      artefactId: artefact.id,
+      version: artefact.version,
+      body: artefact.body,
+      authoredBy: artefact.producedBy ?? 'unknown',
+      origin: 'ai',
+      note: `Translated into ${languageName(targetLanguage)} from the approved original`,
+      createdAt: now(),
+    });
+  } catch (error) {
+    artefact.state = 'failed';
+    artefact.error = error instanceof Error ? error.message : String(error);
+    artefact.updatedAt = now();
+  }
+
+  return store.saveArtefact(artefact);
+}
+
+/**
+ * Somebody who reads the language says it says what the original says.
+ *
+ * THE LECTURER CANNOT DO THIS FOR A LANGUAGE THEY DO NOT READ, and the
+ * capability matrix is what stops them: `approve-translation` is held by a
+ * translation reviewer and by nobody else. A translation nobody has read is
+ * publishable — it is often better than nothing for a student who cannot read
+ * the original — but it is labelled as unread, every time it is shown.
+ */
+export async function approveTranslation(
+  store: Store, actor: Actor, artefactId: string,
+): Promise<Artefact> {
+  const artefact = await store.artefact(artefactId);
+  if (!artefact) throw new Refused('No such artefact.');
+  if (!artefact.translatedFromId) throw new Refused('That is not a translation.');
+  if (!can(actor.role, 'approve-translation')) {
+    throw new Refused('A translation is vouched for by somebody who reads that language.');
+  }
+  if (artefact.state === 'failed') {
+    throw new Refused('This translation was rejected. It has to be made again, not approved.');
+  }
+  if (artefact.staleSince) {
+    throw new Refused('The original has been corrected since this was translated. Remake it first.');
+  }
+
+  const person = await store.person(actor.id);
+  artefact.translationStanding = 'reviewed';
+  artefact.reviewedBy = actor.id;
+  artefact.reviewedByName = person?.name;
+  artefact.reviewedAt = now();
+  artefact.state = artefact.state === 'published' ? 'published' : 'approved';
+  artefact.updatedAt = now();
+  return store.saveArtefact(artefact);
+}
+
+/** Which languages a lecture exists in, and what each one is worth. */
+export async function languagesOf(store: Store, lectureId: string) {
+  const artefacts = await store.artefacts(lectureId);
+  const lecture = await store.lecture(lectureId);
+  const course = lecture ? await store.course(lecture.courseId) : null;
+  const original = course?.originalLanguage ?? 'en';
+
+  const seen = new Map<string, { language: string; artefacts: number; published: number; standing?: string }>();
+  seen.set(original, { language: original, artefacts: 0, published: 0 });
+
+  for (const artefact of artefacts) {
+    const code = artefact.language ?? original;
+    const row = seen.get(code) ?? { language: code, artefacts: 0, published: 0 };
+    row.artefacts += 1;
+    if (artefact.state === 'published') row.published += 1;
+    if (artefact.translationStanding) {
+      // The weakest standing of any artefact in that language is the one the
+      // student should be told about.
+      row.standing = row.standing === 'stale' || artefact.translationStanding === 'stale'
+        ? 'stale'
+        : row.standing === 'unreviewed' || artefact.translationStanding === 'unreviewed'
+          ? 'unreviewed' : artefact.translationStanding;
+    }
+    seen.set(code, row);
+  }
+  return [...seen.values()];
 }

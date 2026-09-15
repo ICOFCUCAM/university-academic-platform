@@ -178,6 +178,12 @@ export interface AnswerInput {
   register?: Register | null;
   /** The last few turns, so "give me a simple explanation" has a subject. */
   history?: { role: 'student' | 'tutor'; body: string }[];
+  /**
+   * Set when the student reads a different language from the one the course is
+   * taught in. It carries the translation rules into the answer — and the
+   * instruction to quote the lecturer's own sentence beside the rendering.
+   */
+  languageNote?: string;
 }
 
 export interface AnswerResult {
@@ -340,7 +346,11 @@ export async function answer(e: Engine, input: AnswerInput): Promise<AnswerResul
 
   const register: Register | undefined =
     input.register ?? (intent.kind === 'explain' ? intent.register ?? undefined : undefined);
-  const system = register ? `${TUTOR_SYSTEM}\n\n${REGISTER_NOTE[register]}` : TUTOR_SYSTEM;
+  const system = [
+    TUTOR_SYSTEM,
+    register ? REGISTER_NOTE[register] : '',
+    input.languageNote ?? '',
+  ].filter(Boolean).join('\n\n');
 
   const result = await callAs(e, 'course-tutor', {
     system,

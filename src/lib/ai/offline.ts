@@ -62,11 +62,12 @@ function definitions(list: string[]): { term: string; definition: string; quote:
 }
 
 /** Which way is this prompt pointing? The system prompt names its own job. */
-function intentOf(system: string): 'correct' | 'notes' | 'extract' | 'script' | 'revision' | 'tutor' | 'studyaid' {
+function intentOf(system: string): 'correct' | 'notes' | 'extract' | 'script' | 'revision' | 'tutor' | 'studyaid' | 'translate' {
   // ORDER MATTERS, AND THE MARKERS ARE THE PROMPTS' OWN OPENING LINES. Matching
   // on a word that appears in several prompts produced a "teaching script"
   // that was a set of revision questions — which is what happens when a
   // detector guesses.
+  if (system.includes('ROLE: TRANSLATION ENGINE')) return 'translate';
   if (system.includes('extract what a lecture teaches')) return 'extract';
   if (system.startsWith('Create a spoken condensation')) return 'script';
   if (system.includes('the notes a student actually revises from')) return 'notes';
@@ -95,6 +96,15 @@ export function offlineModel(): LanguageModel {
       const list = sentences(source);
       const defs = definitions(list);
       const intent = intentOf(request.system);
+
+      // A TRANSLATION CANNOT BE FAKED BY RULE, and a mangled one is worse than
+      // none: it would be published to the one cohort nobody at the university
+      // can check. It refuses by name.
+      if (intent === 'translate') {
+        throw new Error(
+          'No language model is configured, so nothing can be translated. The approved original is still there to read.',
+        );
+      }
 
       if (intent === 'correct') {
         return { text: paragraphs(list), producedBy: STAMP };

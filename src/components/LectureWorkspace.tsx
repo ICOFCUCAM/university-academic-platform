@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, Pencil, Play, RotateCw, Send, Undo2 } from 'lucide-react';
+import { Check, Languages, Loader2, Pencil, Play, RotateCw, Send, Undo2 } from 'lucide-react';
 import type { Artefact, ArtefactKind, Lecture } from '@/lib/domain/types';
 import { MODES, PERSONAS, type AudioMode, type Persona } from '@/lib/ai/audioModes';
 import { REVISION_LABEL, type RevisionKind } from '@/lib/ai/prompts';
 import { Markdown } from '@/components/Markdown';
 import { WordCheck } from '@/components/WordCheck';
 import { StateBadge } from '@/components/ui';
+import { CopyButton, LanguageBar, StandingNote, type LanguageRow } from '@/components/LanguageBar';
+import { clock, direction, estimateSeconds, LANGUAGE_BY_CODE, TRANSLATABLE } from '@/lib/i18n/languages';
 
 interface Stage {
   kind: ArtefactKind;
@@ -21,12 +23,17 @@ interface Stage {
 
 export function LectureWorkspace({
   lecture, stages, artefacts: initial, canEdit, student,
+  originalLanguage, offeredLanguages, canTranslate, canApproveTranslation,
 }: {
   lecture: Lecture;
   stages: Stage[];
   artefacts: Artefact[];
   canEdit: boolean;
   student: boolean;
+  originalLanguage: string;
+  offeredLanguages: string[];
+  canTranslate: boolean;
+  canApproveTranslation: boolean;
 }) {
   const router = useRouter();
   const [artefacts, setArtefacts] = useState(initial);
@@ -42,12 +49,48 @@ export function LectureWorkspace({
   const [revision, setRevision] = useState<RevisionKind>('full');
   const [compare, setCompare] = useState(false);
   const [checkingWords, setCheckingWords] = useState(false);
+  const [language, setLanguage] = useState(originalLanguage);
+  const [translating, setTranslating] = useState<string | null>(null);
+  const [showMaster, setShowMaster] = useState(false);
 
-  const byKind = useMemo(
-    () => Object.fromEntries(artefacts.map((a) => [a.kind, a])) as Partial<Record<ArtefactKind, Artefact>>,
+  // ---- MASTER, AND ITS DERIVATIVES ---------------------------------------
+  //
+  // The lecturer's approved original is the master; every translation hangs
+  // off it. Selecting a language selects which rendering of the lecture is on
+  // the screen — never a different lecture.
+  const inLanguage = useMemo(
+    () => artefacts.filter((a) => (a.language ?? originalLanguage) === language
+      && (language === originalLanguage ? !a.translatedFromId : !!a.translatedFromId)),
+    [artefacts, language, originalLanguage],
+  );
+  const masters = useMemo(
+    () => Object.fromEntries(artefacts.filter((a) => !a.translatedFromId).map((a) => [a.kind, a])) as Partial<Record<ArtefactKind, Artefact>>,
     [artefacts],
   );
+  const byKind = useMemo(
+    () => Object.fromEntries(inLanguage.map((a) => [a.kind, a])) as Partial<Record<ArtefactKind, Artefact>>,
+    [inLanguage],
+  );
   const shown = byKind[open];
+  const master = masters[open];
+
+  const languageRows: LanguageRow[] = useMemo(() => {
+    const rows = new Map<string, LanguageRow>();
+    rows.set(originalLanguage, { code: originalLanguage, exists: true, published: 0 });
+    for (const artefact of artefacts) {
+      const code = artefact.language ?? originalLanguage;
+      const row = rows.get(code) ?? { code, exists: true, published: 0 };
+      row.exists = true;
+      if (artefact.state === 'published') row.published += 1;
+      if (artefact.translationStanding) {
+        row.standing = row.standing === 'stale' || artefact.translationStanding === 'stale' ? 'stale'
+          : row.standing === 'unreviewed' || artefact.translationStanding === 'unreviewed' ? 'unreviewed'
+            : artefact.translationStanding;
+      }
+      rows.set(code, row);
+    }
+    return [...rows.values()];
+  }, [artefacts, originalLanguage]);
 
   const replace = (artefact: Artefact) =>
     setArtefacts((list) => {
@@ -75,6 +118,64 @@ export function LectureWorkspace({
     } finally { setBusy(null); }
   }
 
+  async function translateKind(kind: ArtefactKind, code: string) {
+    const source = masters[kind];
+    if (!source) { setError('There is nothing approved to translate yet.'); return; }
+    setTranslating(code); setError(null);
+    try {
+      const response = await fetch(`/api/artefacts/${source.id}/translate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ language: code }),
+      });
+      const payload = await response.json();
+      if (!response.ok) { setError(payload.error); return; }
+      setArtefacts((list) => [...list.filter((a) => a.id !== payload.artefact.id), payload.artefact]);
+      setLanguage(code);
+      setOpen(kind);
+      if (payload.artefact.state === 'failed') setError(payload.artefact.error);
+      router.refresh();
+    } finally { setTranslating(null); }
+  }
+
+  async function translate(code: string) {
+    // TRANSLATED FROM THE MASTER, ALWAYS. Never from whatever happens to be on
+    // the screen — a translation of a translation is how six languages become
+    // six different lectures.
+    const source = masters[open] ?? masters.structured_notes ?? masters.corrected_text;
+    if (!source) { setError('There is nothing approved to translate yet.'); return; }
+    setTranslating(code); setError(null);
+    try {
+      const response = await fetch(`/api/artefacts/${source.id}/translate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ language: code }),
+      });
+      const payload = await response.json();
+      if (!response.ok) { setError(payload.error); return; }
+      setArtefacts((list) => [...list.filter((a) => a.id !== payload.artefact.id), payload.artefact]);
+      setLanguage(code);
+      setOpen(payload.artefact.kind);
+      if (payload.artefact.state === 'failed') setError(payload.artefact.error);
+      router.refresh();
+    } finally { setTranslating(null); }
+  }
+
+  async function vouch(artefact: Artefact) {
+    setBusy(artefact.kind); setError(null);
+    try {
+      const response = await fetch(`/api/artefacts/${artefact.id}/translate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' }),
+      });
+      const payload = await response.json();
+      if (!response.ok) { setError(payload.error); return; }
+      replace(payload.artefact);
+      router.refresh();
+    } finally { setBusy(null); }
+  }
+
   async function act(artefact: Artefact, action: string, body?: string) {
     setBusy(artefact.kind); setError(null);
     try {
@@ -94,18 +195,39 @@ export function LectureWorkspace({
   const source = shown ? stages.find((s) => s.kind === shown.kind)?.from : null;
   const sourceArtefact = source ? byKind[source] : undefined;
 
+  const translated = language !== originalLanguage;
+  const dir = direction(language);
+
   return (
+    <>
+    <LanguageBar
+      original={originalLanguage}
+      rows={languageRows}
+      selected={language}
+      offered={offeredLanguages}
+      canTranslate={canTranslate}
+      busy={translating}
+      onSelect={(code) => { setLanguage(code); setShowMaster(false); }}
+      onTranslate={translate}
+    />
     <div className="grid gap-6 px-6 py-6 md:px-8 lg:grid-cols-[260px_1fr]">
       {/* ---- THE PIPELINE, AS A COLUMN YOU CAN WATCH FILL IN ------------- */}
       <aside className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Pipeline</h2>
-        {stages.map((stage) => {
+        {translated && (
+          <p className="rounded-md border border-page-line bg-page px-3 py-2 text-[11px] text-ink-soft">
+            Renderings of the master. A stage that is not here has not been
+            translated — the lecture itself is on the English tab.
+          </p>
+        )}
+        {stages.filter((stage) => !translated
+          || (TRANSLATABLE as readonly string[]).includes(stage.kind)).map((stage) => {
           const artefact = byKind[stage.kind];
           const state = artefact?.state ?? 'absent';
           const source = stage.from ? byKind[stage.from] : undefined;
           // THE AUDIO HAS A SECOND GATE: the words of the script have to have
           // been read by a person. A voice cannot be proofread by its listener.
-          const wordsUnchecked = stage.kind === 'audio_15min' && !source?.wordCheck;
+          const wordsUnchecked = !translated && stage.kind === 'audio_15min' && !source?.wordCheck;
           const blocked = stage.from
             ? !['ready', 'approved', 'published'].includes(source?.state ?? '')
               || (stage.requiresApprovedSource && source?.state === 'ready')
@@ -141,7 +263,22 @@ export function LectureWorkspace({
                 )}
               </button>
 
-              {canEdit && stage.from && (
+              {translated && canTranslate && (
+                <button
+                  type="button"
+                  onClick={() => translateKind(stage.kind, language)}
+                  disabled={translating !== null || !masters[stage.kind]
+                    || !['approved', 'published'].includes(masters[stage.kind]!.state)}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded border border-page-line bg-white px-2 py-1 text-[11px] text-ink-soft disabled:opacity-40 hover:border-brand/40"
+                  title={!masters[stage.kind] || !['approved', 'published'].includes(masters[stage.kind]!.state)
+                    ? 'The original has to be approved before it is translated'
+                    : ''}
+                >
+                  {translating === language ? <Loader2 size={12} className="animate-spin" /> : <Languages size={12} />}
+                  {artefact ? 'Translate again' : 'Translate'}
+                </button>
+              )}
+              {!translated && canEdit && stage.from && (
                 <button
                   type="button"
                   onClick={() => run(stage.kind)}
@@ -159,7 +296,7 @@ export function LectureWorkspace({
           );
         })}
 
-        {canEdit && (
+        {canEdit && !translated && (
           <div className="rounded-md border border-page-line bg-page-card px-3 py-3 space-y-3">
             <div>
               <label className="block text-[11px] uppercase tracking-wide text-ink-faint">Audio mode</label>
@@ -215,11 +352,45 @@ export function LectureWorkspace({
                   {stages.find((s) => s.kind === shown.kind)?.label}
                 </h2>
                 <p className="text-xs text-ink-faint">
-                  Version {shown.version}
+                  {LANGUAGE_BY_CODE[language]?.name ?? language}
+                  {translated ? '' : ' · master'}
+                  {' · '}Version {shown.version}
                   {shown.correctedByLecturer ? ' · corrected by the lecturer' : ''}
                   {shown.producedBy ? ` · ${shown.producedBy}` : ''}
-                  {shown.approvedByName ? ` · approved by ${shown.approvedByName}` : ''}
+                  {!translated && shown.approvedByName ? ` · approved by ${shown.approvedByName}` : ''}
+                  {translated
+                    ? shown.reviewedByName
+                      ? ` · checked by ${shown.reviewedByName}`
+                      : ' · read by nobody who speaks it'
+                    : ''}
+                  {/* "15-minute lesson" means ABOUT fifteen minutes: the same
+                      lecture is 15:00 in English and 15:20 in Arabic, and
+                      trimming the Arabic would mean cutting a sentence the
+                      lecturer said. */}
+                  {(shown.kind === 'teaching_script' || shown.kind === 'audio_15min') && shown.body
+                    ? ` · 🎧 about ${clock(estimateSeconds(shown.body, language))}`
+                    : ''}
                 </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {shown.body && <CopyButton text={shown.body} />}
+                {translated && canApproveTranslation && shown.translationStanding !== 'reviewed' && (
+                  <button
+                    type="button" onClick={() => vouch(shown)} disabled={busy !== null}
+                    className="rounded border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-ok"
+                  >
+                    This says what the original says
+                  </button>
+                )}
+                {translated && master && (
+                  <button
+                    type="button" onClick={() => setShowMaster((v) => !v)}
+                    className="rounded border border-page-line px-2.5 py-1.5 text-xs text-ink-soft hover:border-brand/40"
+                  >
+                    {showMaster ? 'Hide the original' : 'Beside the original'}
+                  </button>
+                )}
               </div>
 
               {canEdit && (
@@ -303,11 +474,21 @@ export function LectureWorkspace({
                 from the lecturer's own recording, language and structure
                 processed, substance preserved — and an artefact the offline
                 processor made says that instead. */}
-            {shown.origin !== 'lecturer' && (
+            {shown.origin !== 'lecturer' && !translated && (
               <div className="rounded-md border border-page-line bg-page px-4 py-2.5 text-xs text-ink-soft">
                 <span className="font-semibold uppercase tracking-wide text-ink-faint">Lecture content</span>
                 {' — generated from the lecturer’s recording. The AI processed the language and '}
                 structure; the substance of the lecture is unchanged.
+              </div>
+            )}
+            {translated && (
+              <div className="rounded-md border border-page-line bg-page px-4 py-2.5 text-xs text-ink-soft">
+                <span className="font-semibold uppercase tracking-wide text-ink-faint">Translation</span>
+                {' — carried from the '}
+                {LANGUAGE_BY_CODE[originalLanguage]?.name ?? originalLanguage}
+                {' master that '}
+                {master?.approvedByName ?? 'the lecturer'}
+                {' approved. The academic content is the same; only the language changes.'}
               </div>
             )}
             {shown.origin === 'lecturer' && shown.correctedByLecturer && (
@@ -328,6 +509,32 @@ export function LectureWorkspace({
               <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-ink-soft">
                 <strong className="text-warn">Not yet seen by anybody but you.</strong> Read it, correct
                 anything the machine got wrong, then approve it. Students receive nothing until you publish.
+              </div>
+            )}
+
+            {translated && shown.translationStanding && (
+              <StandingNote
+                standing={shown.translationStanding}
+                original={originalLanguage}
+                onReadOriginal={() => { setLanguage(originalLanguage); setShowMaster(false); }}
+              />
+            )}
+
+            {shown.translationFindings && shown.translationFindings.length > 0 && (
+              <div className="rounded-md border border-page-line bg-page px-4 py-3 text-sm">
+                <p className="font-medium">What the language-agnostic checks found</p>
+                <ul className="mt-1 space-y-1 text-xs text-ink-soft">
+                  {shown.translationFindings.map((finding, i) => (
+                    <li key={i}>
+                      <span className={`font-medium uppercase tracking-wide ${
+                        finding.severity === 'reject' ? 'text-bad' : 'text-warn'
+                      }`}>
+                        {finding.severity === 'reject' ? 'rejected' : 'check'}
+                      </span>
+                      {' · '}{finding.note}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -411,8 +618,23 @@ export function LectureWorkspace({
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
               />
+            ) : showMaster && master?.body ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <article className="rounded-lg border border-page-line bg-page-card p-5">
+                  <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-faint">
+                    {LANGUAGE_BY_CODE[originalLanguage]?.name ?? originalLanguage} — master, what the lecturer taught
+                  </p>
+                  <Markdown source={master.body} />
+                </article>
+                <article className="rounded-lg border border-page-line bg-page-card p-5" dir={dir}>
+                  <p className="mb-2 text-[11px] uppercase tracking-wide text-ink-faint" dir="ltr">
+                    {LANGUAGE_BY_CODE[language]?.name ?? language}
+                  </p>
+                  <Markdown source={shown.body ?? ''} />
+                </article>
+              </div>
             ) : (
-              <article className="rounded-lg border border-page-line bg-page-card p-6 md:p-8">
+              <article className="rounded-lg border border-page-line bg-page-card p-6 md:p-8" dir={dir}>
                 {shown.kind === 'audio_15min' ? (
                   <div className="text-sm text-ink-soft">
                     {shown.mediaPath
@@ -427,12 +649,17 @@ export function LectureWorkspace({
               </article>
             )}
 
-            {student && shown.state === 'published' && shown.approvedByName && (
-              <p className="text-xs text-ink-faint">Published by {shown.approvedByName}.</p>
+            {student && shown.state === 'published' && (
+              <p className="text-xs text-ink-faint">
+                {translated
+                  ? `Translated from the original published by ${master?.approvedByName ?? shown.approvedByName ?? 'the lecturer'}.`
+                  : shown.approvedByName ? `Published by ${shown.approvedByName}.` : null}
+              </p>
             )}
           </>
         )}
       </div>
     </div>
+    </>
   );
 }

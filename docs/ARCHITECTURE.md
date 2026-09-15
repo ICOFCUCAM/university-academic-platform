@@ -47,6 +47,50 @@ published. A dropped or respelled term short of that is reported and left to
 the lecturer, because a summary legitimately uses a term fewer times than the
 lecture did.
 
+## 0b. The multilingual layer
+
+```
+LECTURER REVIEW → ✅ FINAL APPROVAL ─┬─► ORIGINAL LANGUAGE (the MASTER)
+                                     └─► TRANSLATION ENGINE
+                                          fr · es · pt · ar · zh · sw · de · no
+                                              ↓
+                                     NOTES · AUDIO · QUIZ · COURSE AI
+```
+
+Article 8 of the constitution, in three rules:
+
+1. **Translation follows approval.** `translateArtefact` refuses an artefact
+   that is not `approved` or `published`. A draft translated into six languages
+   is one mistake in six places, found by nobody.
+2. **Every translation derives from the master.** Translating a translation is
+   refused outright, so languages cannot drift down a chain.
+3. **The original governs.** Every translated page says so and links to it.
+
+**What is carried across**: corrected text, structured notes, teaching script,
+revision materials. Not the transcript (working material) and not the knowledge
+extraction — the Course AI reads one index, in the lecture's own language, and
+two indexes could disagree.
+
+**How a translation is checked when nobody here reads the language**
+(`i18n/validate.ts`): the lecturer's protected terms (as markers, so the check
+is about markers and not about the target language's orthography), every figure
+the lecture states (Eastern Arabic and full-width digits normalised first), the
+same headings, the same number of list items and question lines, and a length
+ratio that is not absurd. A lost marker, a lost figure, a lost heading or a
+translation under 45% of the original's length is a **rejection**; the rest are
+warnings for whoever reviews.
+
+**Who vouches for it**: `approve-translation` is held by a translation reviewer
+and by nobody else — not by the lecturer, who in general cannot read the
+language and must not be able to manufacture that approval. A translation
+nobody has read is still publishable, because it is usually better than nothing
+for a student who cannot read the original, and it is labelled `unreviewed`
+every time it is shown.
+
+**Audio**: each language has its own speech rate (`languages.ts`), so a
+fifteen-minute lesson is about fifteen minutes in each — 15:00, 15:12, 15:20 —
+and the estimate is shown rather than a promise of exactness.
+
 ## 1. The four products inside this one
 
 | | What it is | Where it lives |

@@ -15,12 +15,12 @@ const T = await load('ai/terminology.ts');
 const t = suite('The AI Transformation Constitution');
 const lib = new URL('..', import.meta.url).pathname;
 
-t.section('Seven articles, in order of precedence');
-t.check('there are seven', C.CONSTITUTION.map((a) => a.n), [1, 2, 3, 4, 5, 6, 7]);
+t.section('Eight articles, in order of precedence');
+t.check('there are eight', C.CONSTITUTION.map((a) => a.n), [1, 2, 3, 4, 5, 6, 7, 8]);
 t.check('and they are the ones the University set', C.CONSTITUTION.map((a) => a.title), [
   'Source preservation', 'Meaning preservation', 'Terminology preservation',
   'No unrequested knowledge injection', 'No silent normalisation',
-  'Traceability', 'Explicit separation',
+  'Traceability', 'Explicit separation', 'Translation follows approval',
 ]);
 
 t.section('Every article names a file, and the file exists');

@@ -41,6 +41,8 @@ export default async function CourseAIPage({ params }: { params: { id: string } 
       <div className="flex-1 overflow-hidden px-6 py-6 md:px-8">
         <CourseChat
           courseId={course.id}
+          courseLanguage={course.originalLanguage ?? 'en'}
+          offeredLanguages={course.offeredLanguages ?? []}
           suggestions={[
             ...(topics.length ? [`Explain ${topics[0].toLowerCase()} based on our lectures.`] : []),
             'Create a 10-question test.',

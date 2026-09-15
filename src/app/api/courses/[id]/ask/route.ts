@@ -14,6 +14,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       register: body.register ?? null,
       conversationId: body.conversationId,
       scope: body.lectureSequence ? { lectureSequence: body.lectureSequence } : undefined,
+      language: body.language,
     });
 
     // The ask was for something to be MADE — a test, an audio revision — so

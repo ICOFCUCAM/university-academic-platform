@@ -73,6 +73,14 @@ export interface Course {
    * mechanically, not asked to respect it.
    */
   terminology?: string[];
+  /**
+   * The language the lecture is GIVEN in. The original, and the one that
+   * governs: where a translation and the original disagree, this is what the
+   * lecturer taught and what the student is examined on.
+   */
+  originalLanguage?: string;
+  /** Languages this course is offered in besides the original. */
+  offeredLanguages?: string[];
   /** The university opens and closes the course; a lecturer never does. */
   status: 'draft' | 'running' | 'archived';
 }
@@ -175,6 +183,26 @@ export interface Artefact {
   /** The artefact this one was made from. Null only for a recording. */
   derivedFromId: string | null;
 
+  /**
+   * BCP-47. The original lecture's language, or the language this artefact was
+   * translated into. Absent means the course's original language, so every
+   * artefact made before this platform spoke more than one language still
+   * reads correctly.
+   */
+  language?: string;
+  /**
+   * The approved artefact this is a translation of. TRANSLATION IS DERIVED
+   * FROM AN APPROVAL, never from a draft: `derivedFromId` says which stage of
+   * the pipeline it belongs to, and this says which approved original it
+   * carries into another language.
+   */
+  translatedFromId?: string;
+  /** Who, if anybody, has read this translation. See i18n/languages.ts. */
+  translationStanding?: import('../i18n/languages').TranslationStanding;
+  reviewedBy?: string;
+  reviewedByName?: string;
+  reviewedAt?: string;
+
   /** Text artefacts carry their body here; media artefacts carry a path. */
   body?: string;
   /**
@@ -205,6 +233,13 @@ export interface Artefact {
    * round. Empty is the normal case and means the check ran and found nothing.
    */
   terminology?: import('../ai/terminology').TerminologyFinding[];
+
+  /**
+   * What the language-agnostic checks found: a protected term that did not
+   * cross, a figure that vanished, a section that disappeared. Checked without
+   * reading the language, because nobody here reads all seven.
+   */
+  translationFindings?: import('../i18n/validate').TranslationFinding[];
 
   /**
    * THE WORD CHECK. Set once a person has been through the words this system

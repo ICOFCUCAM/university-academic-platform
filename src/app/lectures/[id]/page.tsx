@@ -4,6 +4,7 @@ import { getStore } from '@/lib/data';
 import { currentActor } from '@/lib/session';
 import { STAGES } from '@/lib/pipeline/stages';
 import { mayAct } from '@/lib/domain/ownership';
+import { can } from '@/lib/capabilities';
 import { LectureWorkspace } from '@/components/LectureWorkspace';
 import { LectureCompanion } from '@/components/LectureCompanion';
 import { Empty, PageHeader } from '@/components/ui';
@@ -63,6 +64,10 @@ export default async function LecturePage({ params }: { params: { id: string } }
         artefacts={student ? visible : all}
         canEdit={canEdit}
         student={student}
+        originalLanguage={course.originalLanguage ?? 'en'}
+        offeredLanguages={course.offeredLanguages ?? []}
+        canTranslate={can(actor.role, 'request-translation') && course.lecturerIds.includes(actor.id)}
+        canApproveTranslation={can(actor.role, 'approve-translation')}
       />
 
       {/* THE LECTURE COMPANION. "Ask about this lecture" means this lecture —

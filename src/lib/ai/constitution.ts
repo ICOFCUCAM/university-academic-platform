@@ -66,6 +66,12 @@ export const CONSTITUTION: Article[] = [
     rule: 'Where general AI knowledge is permitted at all, a student must have asked for it explicitly, and it is labelled as not being their lecturer’s teaching.',
     enforcedBy: ['ai/roles.ts', 'ai/tutor.ts'],
   },
+  {
+    n: 8,
+    title: 'Translation follows approval',
+    rule: 'A lecture is translated only after the lecturer has approved the original, never from a draft and never from another translation. The original governs: where a translation and the original differ, the original is what was taught. Protected terminology crosses languages unchanged, and who has read a translation is stated on the page.',
+    enforcedBy: ['i18n/translate.ts', 'i18n/validate.ts', 'service.ts'],
+  },
 ];
 
 /** The constitution as it appears to a model, at the head of the contract. */
